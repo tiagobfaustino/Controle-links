@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import Database from "better-sqlite3";
+import bcrypt from "bcryptjs";
 import path from "path";
 
 function getDb() {
@@ -27,6 +28,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (body.role !== undefined) {
     db.prepare("UPDATE Usuario SET role = ? WHERE id = ?").run(body.role, id);
   }
+  if (body.resetSenha === true) {
+    const senhaHash = bcrypt.hashSync("tpcefs2026", 12);
+    db.prepare("UPDATE Usuario SET senhaHash = ?, firstLogin = 1 WHERE id = ?").run(senhaHash, id);
+  }
 
   const u = db
     .prepare("SELECT id, email, nome, role, firstLogin, ativo, criadoEm FROM Usuario WHERE id = ?")
@@ -34,3 +39,4 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   db.close();
   return NextResponse.json(u);
 }
+

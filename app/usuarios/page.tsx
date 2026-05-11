@@ -4,7 +4,13 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Power } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, Power, KeyRound } from "lucide-react";
 
 type Usuario = {
   id: string;
@@ -32,6 +38,8 @@ const roleVariant: Record<string, "default" | "secondary" | "outline"> = {
 export default function UsuariosPage() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resetTarget, setResetTarget] = useState<Usuario | null>(null);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     fetch("/api/usuarios")
@@ -50,6 +58,26 @@ export default function UsuariosPage() {
         prev.map((x) => (x.id === u.id ? { ...x, ativo: u.ativo ? 0 : 1 } : x))
       );
       toast.success(u.ativo ? "Usuário desativado" : "Usuário ativado");
+    }
+  }
+
+  async function confirmReset() {
+    if (!resetTarget) return;
+    setResetting(true);
+    const res = await fetch(`/api/usuarios/${resetTarget.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resetSenha: true }),
+    });
+    setResetting(false);
+    if (res.ok) {
+      setUsuarios((prev) =>
+        prev.map((x) => (x.id === resetTarget.id ? { ...x, firstLogin: 1 } : x))
+      );
+      toast.success(`Senha de ${resetTarget.nome} redefinida para tpcefs2026`);
+      setResetTarget(null);
+    } else {
+      toast.error("Erro ao redefinir senha");
     }
   }
 
@@ -81,7 +109,7 @@ export default function UsuariosPage() {
                 <th className="px-4 py-3 text-left font-medium">Perfil</th>
                 <th className="px-4 py-3 text-left font-medium">Participante</th>
                 <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-right font-medium w-16"></th>
+                <th className="px-4 py-3 text-right font-medium w-24"></th>
               </tr>
             </thead>
             <tbody>
@@ -105,7 +133,15 @@ export default function UsuariosPage() {
                       {u.ativo ? "Ativo" : "Inativo"}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right flex justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setResetTarget(u)}
+                      title="Redefinir senha"
+                    >
+                      <KeyRound className="h-4 w-4 text-amber-600" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -121,6 +157,28 @@ export default function UsuariosPage() {
           </table>
         </div>
       )}
+
+      {/* Confirm reset dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redefinir senha</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            A senha de <strong>{resetTarget?.nome}</strong> será redefinida para{" "}
+            <strong className="font-mono">tpcefs2026</strong>. O usuário será obrigado a
+            escolher uma nova senha no próximo acesso.
+          </p>
+          <div className="flex gap-3 pt-2">
+            <Button onClick={confirmReset} disabled={resetting} className="flex-1">
+              {resetting ? "Redefinindo..." : "Confirmar"}
+            </Button>
+            <Button variant="outline" onClick={() => setResetTarget(null)}>
+              Cancelar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
