@@ -90,22 +90,20 @@ Middleware verifica role → redireciona para a home correta:
 
 ### O que cada perfil vê após login
 
-#### ADMIN e GESTOR — `/dashboard`
-- Cards de resumo (demandas ativas, % médio, total participantes)
-- Tabela cruzada completa: todos os participantes × todas as demandas ativas
+#### Todos os perfis — `/dashboard`
+- Cards de resumo: demandas ativas, % médio de cumprimento, total de participantes
+- Tabela cruzada completa: **todos os participantes × todas as demandas ativas**
+- Cada participante vê o status de todos os colegas — incentivando a cobrança mútua
+- Barra de progresso por participante e linha de totais por demanda
+
+#### PARTICIPANTE (além do dashboard)
+- Na sua própria linha do dashboard: botão **"Acessar formulário"** para cada demanda pendente
+- Botão **"Confirmar cumprimento"** na sua linha (pode desfazer enquanto o prazo não venceu)
+- Não pode marcar cumprimento de outros participantes
+
+#### ADMIN / GESTOR (além do dashboard)
 - Checkboxes para marcar/desmarcar cumprimento de qualquer participante
-- Filtros, exportar CSV, botões WhatsApp
-
-#### GESTOR (diferença do ADMIN)
-- Acessa `/demandas` para criar/editar links
-- **Não** acessa `/usuarios` (gestão de usuários é exclusiva do ADMIN)
-
-#### PARTICIPANTE — `/minhas-demandas`
-- Lista das demandas ativas **somente para ele**
-- Cada demanda mostra: título, prazo, status (pendente / cumprido)
-- Botão **"Acessar formulário"** → abre o link do Google Form em nova aba
-- Botão **"Confirmar cumprimento"** → marca como cumprido (pode desfazer enquanto não venceu o prazo)
-- Não vê dados de outros participantes
+- Botões WhatsApp, exportar CSV, filtros avançados
 
 ### Regras de senha
 
@@ -118,12 +116,12 @@ Middleware verifica role → redireciona para a home correta:
 
 | Ação | ADMIN | GESTOR | PARTICIPANTE |
 |------|:-----:|:------:|:------------:|
-| Ver dashboard completo | ✅ | ✅ | ❌ |
-| Ver suas próprias demandas | ✅ | ✅ | ✅ |
+| Ver dashboard completo (todos os colegas) | ✅ | ✅ | ✅ |
+| Confirmar próprio cumprimento | ✅ | ✅ | ✅ |
 | Criar / editar demanda | ✅ | ✅ | ❌ |
 | Ativar / desativar demanda | ✅ | ✅ | ❌ |
 | Marcar cumprimento (qualquer participante) | ✅ | ✅ | ❌ |
-| Confirmar cumprimento (próprio) | ✅ | ✅ | ✅ |
+| Marcar cumprimento de outros | ✅ | ✅ | ❌ |
 | Gerenciar participantes | ✅ | ❌ | ❌ |
 | Criar / desativar usuários | ✅ | ❌ | ❌ |
 
@@ -200,12 +198,11 @@ Middleware verifica role → redireciona para a home correta:
 - Botão "Marcar todos" por demanda ou por participante
 - Desfazer marcação (toggle)
 
-### F5 — Minhas Demandas (PARTICIPANTE)
-- Lista das demandas ativas do participante logado, ordenada por prazo
-- Cada item exibe: título da demanda, prazo, hora-limite, status visual (pendente / cumprido / atrasado)
-- Botão **"Acessar formulário"** → abre o link em nova aba
-- Botão **"Confirmar cumprimento"** → registra com timestamp; disponível até o vencimento do prazo
-- Contador de progresso pessoal: "X de Y demandas cumpridas"
+### F5 — Ações na Própria Linha (PARTICIPANTE — dentro do dashboard)
+- Na linha do participante logado, cada célula pendente exibe o botão **"Acessar formulário"** (abre o link em nova aba)
+- Botão **"Confirmar"** na célula correspondente registra o cumprimento com timestamp
+- Disponível para desfazer enquanto o prazo não venceu
+- A própria linha fica destacada visualmente para facilitar a localização
 
 ### F6 — Ações Rápidas via WhatsApp (ADMIN / GESTOR)
 - Botão em cada linha de participante no dashboard: abre `wa.me/<celular>` com mensagem pré-formatada listando as demandas pendentes
@@ -222,8 +219,11 @@ Middleware verifica role → redireciona para a home correta:
 /login                        → Login (todos)
 /alterar-senha                → Troca de senha obrigatória no 1º login (todos)
 
+── Todos os perfis ───────────────────────────────────────────
+/dashboard                    → Tabela cruzada completa + cards de resumo
+                                (PARTICIPANTE vê botões de ação na própria linha)
+
 ── ADMIN / GESTOR ────────────────────────────────────────────
-/dashboard                    → Tabela cruzada + cards de resumo
 /demandas                     → Lista de demandas
 /demandas/nova                → Criar demanda
 /demandas/[id]                → Editar demanda
@@ -233,9 +233,6 @@ Middleware verifica role → redireciona para a home correta:
 /participantes/[id]           → Detalhe + progresso individual
 /usuarios                     → Listar usuários
 /usuarios/novo                → Criar usuário (nome, email, role)
-
-── PARTICIPANTE ──────────────────────────────────────────────
-/minhas-demandas              → Lista pessoal de demandas + confirmar cumprimento
 ```
 
 ---
@@ -278,9 +275,9 @@ POST   /api/usuarios                   → criar usuário (nome, email, role)
 PATCH  /api/usuarios/[id]              → ativar / desativar
 
 ── PARTICIPANTE ──────────────────────────────────────────────
-GET    /api/minhas-demandas            → demandas ativas do participante logado
-POST   /api/minhas-demandas/confirmar  → confirmar próprio cumprimento { demandaId }
-DELETE /api/minhas-demandas/confirmar  → desfazer confirmação { demandaId }
+GET    /api/cumprimento                → mesma rota (vê a tabela completa, somente leitura)
+POST   /api/cumprimento/proprio        → confirmar próprio cumprimento { demandaId }
+DELETE /api/cumprimento/proprio        → desfazer confirmação { demandaId }
 ```
 
 ---
@@ -292,9 +289,9 @@ DELETE /api/minhas-demandas/confirmar  → desfazer confirmação { demandaId }
 - [ ] Primeiro login com `tpcefs2026` redireciona obrigatoriamente para `/alterar-senha`
 - [ ] Nenhuma rota é acessível sem sessão válida
 - [ ] Sessão com `firstLogin=true` só acessa `/alterar-senha`
-- [ ] Após login, ADMIN/GESTOR vai para `/dashboard`; PARTICIPANTE vai para `/minhas-demandas`
+- [ ] Após login, todos os perfis são redirecionados para `/dashboard`
 - [ ] GESTOR não consegue acessar `/usuarios` nem `/participantes`
-- [ ] PARTICIPANTE não consegue acessar `/dashboard`, `/demandas` nem `/participantes`
+- [ ] PARTICIPANTE não consegue acessar `/demandas` nem `/participantes` nem `/usuarios`
 
 **ADMIN / GESTOR**
 - [ ] Tabela cruzada mostra todos os 28 participantes × todas as demandas ativas
@@ -310,10 +307,12 @@ DELETE /api/minhas-demandas/confirmar  → desfazer confirmação { demandaId }
 - [ ] ADMIN consegue ativar/desativar usuários
 
 **PARTICIPANTE**
-- [ ] Participante logado vê apenas suas próprias demandas ativas
-- [ ] Botão "Acessar formulário" abre o link correto em nova aba
-- [ ] Botão "Confirmar cumprimento" registra com timestamp e muda status visual
+- [ ] Vê o dashboard completo com o status de todos os colegas
+- [ ] Sua própria linha fica destacada no dashboard
+- [ ] Botão "Acessar formulário" aparece nas suas células pendentes e abre o link em nova aba
+- [ ] Botão "Confirmar cumprimento" registra com timestamp e atualiza status visual
 - [ ] Confirmação pode ser desfeita enquanto o prazo não venceu
+- [ ] Não consegue marcar cumprimento de outros participantes
 
 ---
 
@@ -352,7 +351,7 @@ Os 28 participantes da planilha são criados na tabela `Participante`. Contas de
 | F2 | CRUD de demandas | 2h |
 | F3 | CRUD de participantes + import CSV | 2h |
 | F4 | Registro de cumprimento (gestor via checkbox) | 2h |
-| F5 | Minhas Demandas (view do PARTICIPANTE) | 2h |
+| F5 | Ações do participante na própria linha do dashboard | 1h |
 | F6 | Botões WhatsApp | 1h |
 | F7 | Exportar CSV | 1h |
-| **Total** | | **~21h** |
+| **Total** | | **~20h** |
