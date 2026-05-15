@@ -15,7 +15,7 @@ export default withAuth(
     const role = token?.role;
 
     const gestorOnlyPaths = ["/demandas"];
-    const adminOnlyPaths = ["/participantes", "/usuarios"];
+    const adminOnlyPaths = ["/usuarios"];
 
     const isAdminOnly = adminOnlyPaths.some((p) => pathname.startsWith(p));
     const isGestorOrAdmin = gestorOnlyPaths.some((p) => pathname.startsWith(p));
@@ -41,7 +41,6 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/demandas/:path*",
-    "/participantes/:path*",
     "/usuarios/:path*",
     "/alterar-senha",
   ],

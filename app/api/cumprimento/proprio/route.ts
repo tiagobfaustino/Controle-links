@@ -10,9 +10,9 @@ function getDb() {
 
 export async function POST(request: Request) {
   const session = await getServerSession(authOptions);
-  const user = session?.user as { id?: string; role?: string } | undefined;
+  const user = session?.user as { id?: string } | undefined;
 
-  if (!session || user?.role !== "PARTICIPANTE") {
+  if (!session || !user?.id) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
   }
 
@@ -30,24 +30,11 @@ export async function POST(request: Request) {
 
   const db = getDb();
   try {
-    const usuarioRow = db
-      .prepare("SELECT participanteId FROM Usuario WHERE id = ?")
-      .get(user!.id) as { participanteId: number | null } | undefined;
-
-    if (!usuarioRow?.participanteId) {
-      return NextResponse.json(
-        { error: "Usuário não vinculado a um participante." },
-        { status: 400 }
-      );
-    }
-
-    const participanteId = usuarioRow.participanteId;
-
     const id = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
     db.prepare(
-      `INSERT OR IGNORE INTO Cumprimento (id, participanteId, demandaId, dataRegistro)
+      `INSERT OR IGNORE INTO Cumprimento (id, usuarioId, demandaId, dataRegistro)
        VALUES (?, ?, ?, datetime('now'))`
-    ).run(id, participanteId, demandaId);
+    ).run(id, user.id, demandaId);
 
     return NextResponse.json({ ok: true });
   } finally {
@@ -57,9 +44,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   const session = await getServerSession(authOptions);
-  const user = session?.user as { id?: string; role?: string } | undefined;
+  const user = session?.user as { id?: string } | undefined;
 
-  if (!session || user?.role !== "PARTICIPANTE") {
+  if (!session || !user?.id) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
   }
 
@@ -77,20 +64,6 @@ export async function DELETE(request: Request) {
 
   const db = getDb();
   try {
-    const usuarioRow = db
-      .prepare("SELECT participanteId FROM Usuario WHERE id = ?")
-      .get(user!.id) as { participanteId: number | null } | undefined;
-
-    if (!usuarioRow?.participanteId) {
-      return NextResponse.json(
-        { error: "Usuário não vinculado a um participante." },
-        { status: 400 }
-      );
-    }
-
-    const participanteId = usuarioRow.participanteId;
-
-    // Only allow deletion if the demanda deadline has not passed
     const demanda = db
       .prepare("SELECT prazo, horaLimite FROM Demanda WHERE id = ?")
       .get(demandaId) as { prazo: string; horaLimite: string } | undefined;
@@ -99,11 +72,8 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Demanda não encontrada." }, { status: 404 });
     }
 
-    // Parse deadline: prazo is stored as ISO string from SQLite
     const prazoDate = new Date(demanda.prazo);
-    const now = new Date();
-
-    if (now > prazoDate) {
+    if (new Date() > prazoDate) {
       return NextResponse.json(
         { error: "O prazo para esta demanda já encerrou." },
         { status: 403 }
@@ -111,8 +81,8 @@ export async function DELETE(request: Request) {
     }
 
     db.prepare(
-      "DELETE FROM Cumprimento WHERE participanteId = ? AND demandaId = ?"
-    ).run(participanteId, demandaId);
+      "DELETE FROM Cumprimento WHERE usuarioId = ? AND demandaId = ?"
+    ).run(user.id, demandaId);
 
     return NextResponse.json({ ok: true });
   } finally {

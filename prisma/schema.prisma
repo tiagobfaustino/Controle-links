@@ -8,50 +8,44 @@ datasource db {
 }
 
 model Usuario {
-  id             String   @id @default(cuid())
-  email          String   @unique
-  senhaHash      String
-  nome           String
-  role           String   @default("PARTICIPANTE") // ADMIN | GESTOR | PARTICIPANTE
-  firstLogin     Boolean  @default(true)
-  ativo          Boolean  @default(true)
-  participanteId Int?     @unique
-  criadoEm      DateTime @default(now())
+  id           String   @id @default(cuid())
+  email        String   @unique
+  senhaHash    String
+  nome         String
+  nomeExibicao String?
+  celular      String?
+  numCurso     Int?     @unique // Nº Curso (ex: 751) — opcional
+  role         String   @default("PARTICIPANTE") // ADMIN | GESTOR | PARTICIPANTE
+  firstLogin   Boolean  @default(true)
+  ativo        Boolean  @default(true)
+  criadoEm     DateTime @default(now())
 
-  participante Participante? @relation(fields: [participanteId], references: [id])
-}
-
-model Participante {
-  id      Int    @id // Nº Curso (ex: 751)
-  nome    String
-  celular String
-
-  usuario     Usuario?
-  cumprimento Cumprimento[]
+  cumprimento     Cumprimento[]
+  demandasResp    Demanda[]     @relation("DemandaResponsavel")
 }
 
 model Demanda {
-  id          String   @id @default(cuid())
-  titulo      String
-  linkForm    String
-  prazo       DateTime
-  horaLimite  String
-  responsavel String
-  celularResp String
-  ativa       Boolean  @default(true)
-  criadaEm   DateTime @default(now())
+  id            String   @id @default(cuid())
+  titulo        String
+  linkForm      String
+  prazo         DateTime
+  horaLimite    String
+  responsavelId String
+  ativa         Boolean  @default(true)
+  criadaEm      DateTime @default(now())
 
+  responsavel Usuario       @relation("DemandaResponsavel", fields: [responsavelId], references: [id])
   cumprimento Cumprimento[]
 }
 
 model Cumprimento {
-  id             String    @id @default(cuid())
-  participanteId Int
-  demandaId      String
-  dataRegistro   DateTime  @default(now())
+  id           String   @id @default(cuid())
+  usuarioId    String
+  demandaId    String
+  dataRegistro DateTime @default(now())
 
-  participante Participante @relation(fields: [participanteId], references: [id])
-  demanda      Demanda      @relation(fields: [demandaId], references: [id])
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  demanda Demanda @relation(fields: [demandaId], references: [id])
 
-  @@unique([participanteId, demandaId])
+  @@unique([usuarioId, demandaId])
 }

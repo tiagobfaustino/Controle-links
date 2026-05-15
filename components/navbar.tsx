@@ -19,7 +19,6 @@ import {
   LayoutDashboard,
   ClipboardList,
   Users,
-  UserCog,
   LogOut,
   ChevronDown,
 } from "lucide-react";
@@ -77,14 +76,8 @@ export function Navbar() {
       show: isGestorOrAdmin,
     },
     {
-      href: "/participantes",
-      icon: <Users className="size-4" />,
-      label: "Participantes",
-      show: isAdmin,
-    },
-    {
       href: "/usuarios",
-      icon: <UserCog className="size-4" />,
+      icon: <Users className="size-4" />,
       label: "Usuários",
       show: isAdmin,
     },

@@ -20,6 +20,7 @@ import {
 interface Participante {
   id: number;
   nome: string;
+  nomeExibicao: string | null;
   celular: string;
 }
 
@@ -76,6 +77,17 @@ function buildWhatsAppMessage(
 function isPrazoFuturo(prazoStr: string): boolean {
   const d = new Date(prazoStr);
   return d > new Date();
+}
+
+function renderNomeNegrito(p: Participante) {
+  const src = p.nomeExibicao ?? p.nome;
+  return src.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") ? (
+      <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
 }
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
@@ -342,7 +354,7 @@ function CrossTable({
             <tr className="bg-muted/50">
               {/* Sticky name column header */}
               <th
-                className="sticky left-0 z-20 bg-muted/80 backdrop-blur px-3 py-3 text-left font-semibold text-foreground border-b border-r border-border min-w-[180px] max-w-[220px]"
+                className="sticky left-0 z-20 bg-muted/80 backdrop-blur px-3 py-3 text-left font-semibold text-foreground border-b border-r border-border min-w-[280px] whitespace-nowrap"
                 scope="col"
               >
                 Participante
@@ -429,8 +441,8 @@ function CrossTable({
                       {isOwnRow && (
                         <span className="inline-flex size-1.5 rounded-full bg-blue-500 shrink-0" />
                       )}
-                      <span className="truncate max-w-[160px]" title={p.nome}>
-                        {p.nome}
+                      <span className="whitespace-nowrap font-normal" title={p.nome}>
+                        {renderNomeNegrito(p)}
                       </span>
                     </div>
                   </td>

@@ -4,13 +4,22 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Power, KeyRound } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Power, KeyRound, Pencil } from "lucide-react";
 
 type Usuario = {
   id: string;
@@ -20,8 +29,13 @@ type Usuario = {
   firstLogin: number;
   ativo: number;
   criadoEm: string;
+  participanteId?: number | null;
   participanteNome?: string;
 };
+
+type Participante = { id: number; nome: string };
+
+const NONE_PARTICIPANTE = "__none__";
 
 const roleLabel: Record<string, string> = {
   ADMIN: "Admin",
@@ -40,12 +54,64 @@ export default function UsuariosPage() {
   const [loading, setLoading] = useState(true);
   const [resetTarget, setResetTarget] = useState<Usuario | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [participantes, setParticipantes] = useState<Participante[]>([]);
+  const [editTarget, setEditTarget] = useState<Usuario | null>(null);
+  const [editForm, setEditForm] = useState({
+    nome: "",
+    email: "",
+    role: "PARTICIPANTE",
+    participanteId: NONE_PARTICIPANTE,
+  });
+  const [savingEdit, setSavingEdit] = useState(false);
 
   useEffect(() => {
     fetch("/api/usuarios")
       .then((r) => r.json())
       .then((d) => { setUsuarios(d); setLoading(false); });
+    fetch("/api/participantes")
+      .then((r) => r.json())
+      .then((d) => setParticipantes(d))
+      .catch(() => {});
   }, []);
+
+  function openEdit(u: Usuario) {
+    setEditTarget(u);
+    setEditForm({
+      nome: u.nome,
+      email: u.email,
+      role: u.role,
+      participanteId: u.participanteId ? String(u.participanteId) : NONE_PARTICIPANTE,
+    });
+  }
+
+  async function saveEdit() {
+    if (!editTarget) return;
+    setSavingEdit(true);
+    const body = {
+      nome: editForm.nome,
+      email: editForm.email,
+      role: editForm.role,
+      participanteId:
+        editForm.role === "PARTICIPANTE" && editForm.participanteId !== NONE_PARTICIPANTE
+          ? Number(editForm.participanteId)
+          : null,
+    };
+    const res = await fetch(`/api/usuarios/${editTarget.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSavingEdit(false);
+    if (res.ok) {
+      const updated = (await res.json()) as Usuario;
+      setUsuarios((prev) => prev.map((u) => (u.id === editTarget.id ? { ...u, ...updated } : u)));
+      toast.success("Usuário atualizado");
+      setEditTarget(null);
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error ?? "Erro ao salvar");
+    }
+  }
 
   async function toggleAtivo(u: Usuario) {
     const res = await fetch(`/api/usuarios/${u.id}`, {
@@ -137,6 +203,14 @@ export default function UsuariosPage() {
                     <Button
                       variant="ghost"
                       size="icon"
+                      onClick={() => openEdit(u)}
+                      title="Editar"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       onClick={() => setResetTarget(u)}
                       title="Redefinir senha"
                     >
@@ -157,6 +231,77 @@ export default function UsuariosPage() {
           </table>
         </div>
       )}
+
+      {/* Edit dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <Label>Nome</Label>
+              <Input
+                value={editForm.nome}
+                onChange={(e) => setEditForm((f) => ({ ...f, nome: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Perfil</Label>
+              <Select
+                value={editForm.role}
+                onValueChange={(v) => setEditForm((f) => ({ ...f, role: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ADMIN">Admin</SelectItem>
+                  <SelectItem value="GESTOR">Gestor</SelectItem>
+                  <SelectItem value="PARTICIPANTE">Participante</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {editForm.role === "PARTICIPANTE" && (
+              <div className="space-y-1">
+                <Label>Participante vinculado</Label>
+                <Select
+                  value={editForm.participanteId}
+                  onValueChange={(v) => setEditForm((f) => ({ ...f, participanteId: v }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar participante..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={NONE_PARTICIPANTE}>— Nenhum —</SelectItem>
+                    {participantes.map((p) => (
+                      <SelectItem key={p.id} value={String(p.id)}>
+                        {p.id} — {p.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="flex gap-3 pt-2">
+              <Button onClick={saveEdit} disabled={savingEdit} className="flex-1">
+                {savingEdit ? "Salvando..." : "Salvar"}
+              </Button>
+              <Button variant="outline" onClick={() => setEditTarget(null)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirm reset dialog */}
       <Dialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>

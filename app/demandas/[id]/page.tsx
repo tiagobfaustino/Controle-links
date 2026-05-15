@@ -1,16 +1,19 @@
+import Database from "better-sqlite3";
+import path from "path";
 import { DemandaForm } from "@/components/demanda-form";
 
-async function getDemanda(id: string) {
-  const res = await fetch(`${process.env.NEXTAUTH_URL}/api/demandas/${id}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  return res.json();
+function getDemanda(id: string) {
+  const db = new Database(path.resolve(process.cwd(), "dev.db"));
+  try {
+    return db.prepare("SELECT * FROM Demanda WHERE id = ?").get(id) ?? null;
+  } finally {
+    db.close();
+  }
 }
 
 export default async function EditarDemandaPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const demanda = await getDemanda(id);
+  const demanda = getDemanda(id);
   if (!demanda) return <p className="p-8 text-center">Demanda não encontrada.</p>;
-  return <DemandaForm mode="edit" initial={demanda} />;
+  return <DemandaForm mode="edit" initial={demanda as Parameters<typeof DemandaForm>[0]["initial"]} />;
 }

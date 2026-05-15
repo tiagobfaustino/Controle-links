@@ -11,9 +11,20 @@ function getDb() {
 export async function GET() {
   const db = getDb();
   try {
-    const participantes = db
-      .prepare("SELECT p.id, p.nome, p.celular FROM Participante p ORDER BY p.nome")
-      .all() as { id: number; nome: string; celular: string }[];
+    const usuarios = db
+      .prepare(
+        `SELECT id, nome, nomeExibicao, celular, numCurso
+         FROM Usuario
+         WHERE ativo = 1
+         ORDER BY COALESCE(numCurso, 9999), nome`
+      )
+      .all() as {
+        id: string;
+        nome: string;
+        nomeExibicao: string | null;
+        celular: string | null;
+        numCurso: number | null;
+      }[];
 
     const demandas = db
       .prepare("SELECT * FROM Demanda WHERE ativa = 1 ORDER BY prazo")
@@ -23,23 +34,22 @@ export async function GET() {
         linkForm: string;
         prazo: string;
         horaLimite: string;
-        responsavel: string;
-        celularResp: string;
+        responsavelId: string;
         ativa: number;
         criadaEm: string;
       }[];
 
     const cumprimentos = db
       .prepare(
-        "SELECT c.participanteId, c.demandaId, c.dataRegistro FROM Cumprimento c"
+        "SELECT c.usuarioId, c.demandaId, c.dataRegistro FROM Cumprimento c"
       )
       .all() as {
-        participanteId: number;
+        usuarioId: string;
         demandaId: string;
         dataRegistro: string;
       }[];
 
-    return NextResponse.json({ participantes, demandas, cumprimentos });
+    return NextResponse.json({ usuarios, demandas, cumprimentos });
   } finally {
     db.close();
   }
@@ -53,17 +63,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
   }
 
-  let body: { participanteId?: number; demandaId?: string };
+  let body: { usuarioId?: string; demandaId?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Corpo inválido." }, { status: 400 });
   }
 
-  const { participanteId, demandaId } = body;
-  if (!participanteId || !demandaId) {
+  const { usuarioId, demandaId } = body;
+  if (!usuarioId || !demandaId) {
     return NextResponse.json(
-      { error: "participanteId e demandaId são obrigatórios." },
+      { error: "usuarioId e demandaId são obrigatórios." },
       { status: 400 }
     );
   }
@@ -72,9 +82,9 @@ export async function POST(request: Request) {
   try {
     const id = `c${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
     db.prepare(
-      `INSERT OR IGNORE INTO Cumprimento (id, participanteId, demandaId, dataRegistro)
+      `INSERT OR IGNORE INTO Cumprimento (id, usuarioId, demandaId, dataRegistro)
        VALUES (?, ?, ?, datetime('now'))`
-    ).run(id, participanteId, demandaId);
+    ).run(id, usuarioId, demandaId);
 
     return NextResponse.json({ ok: true });
   } finally {
@@ -90,17 +100,17 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 403 });
   }
 
-  let body: { participanteId?: number; demandaId?: string };
+  let body: { usuarioId?: string; demandaId?: string };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Corpo inválido." }, { status: 400 });
   }
 
-  const { participanteId, demandaId } = body;
-  if (!participanteId || !demandaId) {
+  const { usuarioId, demandaId } = body;
+  if (!usuarioId || !demandaId) {
     return NextResponse.json(
-      { error: "participanteId e demandaId são obrigatórios." },
+      { error: "usuarioId e demandaId são obrigatórios." },
       { status: 400 }
     );
   }
@@ -108,8 +118,8 @@ export async function DELETE(request: Request) {
   const db = getDb();
   try {
     db.prepare(
-      "DELETE FROM Cumprimento WHERE participanteId = ? AND demandaId = ?"
-    ).run(participanteId, demandaId);
+      "DELETE FROM Cumprimento WHERE usuarioId = ? AND demandaId = ?"
+    ).run(usuarioId, demandaId);
 
     return NextResponse.json({ ok: true });
   } finally {

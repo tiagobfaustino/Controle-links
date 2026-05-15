@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { signOut } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,6 @@ import {
 import { AlertCircle, KeyRound, CheckCircle2 } from "lucide-react";
 
 export default function AlterarSenhaPage() {
-  const router = useRouter();
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [errors, setErrors] = useState<{ novaSenha?: string; confirmar?: string; geral?: string }>({});
@@ -64,8 +63,7 @@ export default function AlterarSenhaPage() {
 
       setSuccess(true);
       setTimeout(() => {
-        router.push("/dashboard");
-        router.refresh();
+        signOut({ callbackUrl: "/login" });
       }, 1500);
     } catch {
       setErrors({ geral: "Erro de conexão. Tente novamente." });
