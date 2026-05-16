@@ -13,12 +13,18 @@
 # testing
 /coverage
 
-# next.js
-/.next/
-/out/
+# vite build output
+/dist/
+/build/
 
-# production
-/build
+# pocketbase binary + data (downloaded locally for dev)
+/.pb/
+
+# next.js stale cache (legacy, in case it reappears)
+/.next/
+
+# source data (not for repo)
+*.xlsx
 
 # misc
 .DS_Store
@@ -38,9 +44,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
-
-/lib/generated/prisma
 
 # SQLite databases
 *.db
