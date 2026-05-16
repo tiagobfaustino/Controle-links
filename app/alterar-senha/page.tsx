@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth";
+import { getPb } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +17,8 @@ import {
 import { AlertCircle, KeyRound, CheckCircle2 } from "lucide-react";
 
 export default function AlterarSenhaPage() {
+  const router = useRouter();
+  const { user } = useAuth();
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmar, setConfirmar] = useState("");
   const [errors, setErrors] = useState<{ novaSenha?: string; confirmar?: string; geral?: string }>({});
@@ -45,28 +49,36 @@ export default function AlterarSenhaPage() {
       return;
     }
 
+    if (!user) {
+      setErrors({ geral: "Sessão expirada. Faça login novamente." });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await fetch("/api/auth/alterar-senha", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ novaSenha }),
+      const pb = getPb();
+      pb.authStore.loadFromCookie(document.cookie);
+
+      // Update password and clear firstLogin flag
+      await pb.collection("users").update(user.id, {
+        password: novaSenha,
+        passwordConfirm: confirmar,
+        firstLogin: false,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        setErrors({ geral: data.error ?? "Erro ao alterar a senha. Tente novamente." });
-        return;
-      }
+      // Re-authenticate to get a fresh token
+      await pb.collection("users").authWithPassword(user.email, novaSenha);
+      document.cookie = pb.authStore.exportToCookie({ httpOnly: false });
 
       setSuccess(true);
       setTimeout(() => {
-        signOut({ callbackUrl: "/login" });
+        router.push("/dashboard");
       }, 1500);
-    } catch {
-      setErrors({ geral: "Erro de conexão. Tente novamente." });
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Erro ao alterar a senha. Tente novamente.";
+      setErrors({ geral: message });
     } finally {
       setLoading(false);
     }

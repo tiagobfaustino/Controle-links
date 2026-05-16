@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/navbar";
 
-export default function DemandasLayout({ children }: { children: React.ReactNode }) {
+export default function ParticipantesLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />

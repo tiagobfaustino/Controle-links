@@ -1,10 +1,24 @@
 import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { cookies } from "next/headers";
 
 export default async function Home() {
-  const session = await getServerSession(authOptions);
-  if (!session) redirect("/login");
-  if (session.user.firstLogin) redirect("/alterar-senha");
+  const cookieStore = await cookies();
+  const pbAuth = cookieStore.get("pb_auth");
+
+  if (!pbAuth?.value) {
+    redirect("/login");
+  }
+
+  try {
+    const parsed = JSON.parse(decodeURIComponent(pbAuth.value));
+    const model = parsed?.model;
+
+    if (model?.firstLogin) {
+      redirect("/alterar-senha");
+    }
+  } catch {
+    redirect("/login");
+  }
+
   redirect("/dashboard");
 }

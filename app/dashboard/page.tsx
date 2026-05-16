@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useSession } from "next-auth/react";
+import { useAuth } from "@/contexts/auth";
+import { getPb } from "@/lib/pocketbase";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
   CheckCircle2,
@@ -18,9 +18,9 @@ import {
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 interface Participante {
-  id: number;
+  id: string;
+  numeroCurso: number;
   nome: string;
-  nomeExibicao: string | null;
   celular: string;
 }
 
@@ -32,13 +32,13 @@ interface Demanda {
   horaLimite: string;
   responsavel: string;
   celularResp: string;
-  ativa: number;
-  criadaEm: string;
+  ativa: boolean;
 }
 
 interface Cumprimento {
-  participanteId: number;
-  demandaId: string;
+  id: string;
+  participante: string;
+  demanda: string;
   dataRegistro: string;
 }
 
@@ -79,17 +79,6 @@ function isPrazoFuturo(prazoStr: string): boolean {
   return d > new Date();
 }
 
-function renderNomeNegrito(p: Participante) {
-  const src = p.nomeExibicao ?? p.nome;
-  return src.split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
-    part.startsWith("**") && part.endsWith("**") ? (
-      <strong key={i} className="font-bold">{part.slice(2, -2)}</strong>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  );
-}
-
 // ─── Skeleton ────────────────────────────────────────────────────────────────
 
 function SkeletonCard() {
@@ -119,68 +108,87 @@ function SkeletonTable() {
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
-  const role = (session?.user as { role?: string } | undefined)?.role ?? "";
+  const { user } = useAuth();
+  const role = user?.role ?? "";
   const isGestorOrAdmin = role === "ADMIN" || role === "GESTOR";
   const isParticipante = role === "PARTICIPANTE";
 
   const [data, setData] = useState<DashboardData | null>(null);
-  const [myParticipanteId, setMyParticipanteId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [toggling, setToggling] = useState<string>(""); // "participanteId-demandaId"
+  const [toggling, setToggling] = useState<string>("");
 
-  // Fetch cross-table data
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/cumprimento");
-      if (res.ok) {
-        const json = await res.json();
-        setData(json);
-      }
+      const pb = getPb();
+      pb.authStore.loadFromCookie(document.cookie);
+
+      const [participantes, demandas, cumprimentos] = await Promise.all([
+        pb.collection("participantes").getFullList<Participante>({ sort: "numeroCurso" }),
+        pb.collection("demandas").getFullList<Demanda>({ filter: "ativa=true", sort: "prazo" }),
+        pb.collection("cumprimento").getFullList<Cumprimento>(),
+      ]);
+
+      setData({ participantes, demandas, cumprimentos });
     } catch {
       // silently fail; table will show empty state
     }
   }, []);
-
-  // Fetch own participanteId (PARTICIPANTE only)
-  useEffect(() => {
-    if (!isParticipante) return;
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then((d) => setMyParticipanteId(d.participanteId ?? null))
-      .catch(() => {});
-  }, [isParticipante]);
 
   useEffect(() => {
     setLoading(true);
     fetchData().finally(() => setLoading(false));
   }, [fetchData]);
 
-  // Build a cumprimento lookup set: "participanteId-demandaId"
-  const cumprimentoSet = new Set(
-    (data?.cumprimentos ?? []).map((c) => `${c.participanteId}-${c.demandaId}`)
-  );
+  // Real-time updates via PocketBase subscription
+  useEffect(() => {
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
 
-  function isCumprido(participanteId: number, demandaId: string): boolean {
-    return cumprimentoSet.has(`${participanteId}-${demandaId}`);
+    pb.collection("cumprimento").subscribe("*", () => {
+      fetchData();
+    });
+
+    return () => {
+      pb.collection("cumprimento").unsubscribe("*");
+    };
+  }, [fetchData]);
+
+  // Build cumprimento lookup map: "participanteId-demandaId" -> cumprimentoId
+  const cumprimentoMap = new Map<string, string>();
+  for (const c of data?.cumprimentos ?? []) {
+    cumprimentoMap.set(`${c.participante}-${c.demanda}`, c.id);
+  }
+
+  function isCumprido(participanteId: string, demandaId: string): boolean {
+    return cumprimentoMap.has(`${participanteId}-${demandaId}`);
+  }
+
+  function getCumprimentoId(participanteId: string, demandaId: string): string | undefined {
+    return cumprimentoMap.get(`${participanteId}-${demandaId}`);
   }
 
   // ── Toggle for ADMIN/GESTOR ──
-  async function handleAdminToggle(participanteId: number, demandaId: string) {
+  async function handleAdminToggle(participanteId: string, demandaId: string) {
     const key = `${participanteId}-${demandaId}`;
     if (toggling) return;
     setToggling(key);
 
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
+
     const already = isCumprido(participanteId, demandaId);
     try {
-      const res = await fetch("/api/cumprimento", {
-        method: already ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ participanteId, demandaId }),
-      });
-      if (res.ok) {
-        await fetchData();
+      if (already) {
+        const cid = getCumprimentoId(participanteId, demandaId);
+        if (cid) await pb.collection("cumprimento").delete(cid);
+      } else {
+        await pb.collection("cumprimento").create({
+          participante: participanteId,
+          demanda: demandaId,
+          dataRegistro: new Date().toISOString().split("T")[0],
+        });
       }
+      await fetchData();
     } finally {
       setToggling("");
     }
@@ -188,19 +196,28 @@ export default function DashboardPage() {
 
   // ── Toggle for PARTICIPANTE (own row) ──
   async function handleParticipanteToggle(demandaId: string, already: boolean) {
-    const key = `${myParticipanteId}-${demandaId}`;
+    const myId = user?.participante;
+    if (!myId) return;
+
+    const key = `${myId}-${demandaId}`;
     if (toggling) return;
     setToggling(key);
 
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
+
     try {
-      const res = await fetch("/api/cumprimento/proprio", {
-        method: already ? "DELETE" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ demandaId }),
-      });
-      if (res.ok) {
-        await fetchData();
+      if (already) {
+        const cid = getCumprimentoId(myId, demandaId);
+        if (cid) await pb.collection("cumprimento").delete(cid);
+      } else {
+        await pb.collection("cumprimento").create({
+          participante: myId,
+          demanda: demandaId,
+          dataRegistro: new Date().toISOString().split("T")[0],
+        });
       }
+      await fetchData();
     } finally {
       setToggling("");
     }
@@ -218,6 +235,8 @@ export default function DashboardPage() {
             100
         )
       : 0;
+
+  const myParticipanteId = user?.participante ?? null;
 
   return (
     <div className="space-y-6">
@@ -327,10 +346,10 @@ interface CrossTableProps {
   data: DashboardData;
   isGestorOrAdmin: boolean;
   isParticipante: boolean;
-  myParticipanteId: number | null;
-  isCumprido: (participanteId: number, demandaId: string) => boolean;
+  myParticipanteId: string | null;
+  isCumprido: (participanteId: string, demandaId: string) => boolean;
   toggling: string;
-  onAdminToggle: (participanteId: number, demandaId: string) => void;
+  onAdminToggle: (participanteId: string, demandaId: string) => void;
   onParticipanteToggle: (demandaId: string, already: boolean) => void;
 }
 
@@ -354,7 +373,7 @@ function CrossTable({
             <tr className="bg-muted/50">
               {/* Sticky name column header */}
               <th
-                className="sticky left-0 z-20 bg-muted/80 backdrop-blur px-3 py-3 text-left font-semibold text-foreground border-b border-r border-border min-w-[280px] whitespace-nowrap"
+                className="sticky left-0 z-20 bg-muted/80 backdrop-blur px-3 py-3 text-left font-semibold text-foreground border-b border-r border-border min-w-[180px] max-w-[220px]"
                 scope="col"
               >
                 Participante
@@ -441,8 +460,8 @@ function CrossTable({
                       {isOwnRow && (
                         <span className="inline-flex size-1.5 rounded-full bg-blue-500 shrink-0" />
                       )}
-                      <span className="whitespace-nowrap font-normal" title={p.nome}>
-                        {renderNomeNegrito(p)}
+                      <span className="truncate max-w-[160px]" title={p.nome}>
+                        {p.nome}
                       </span>
                     </div>
                   </td>

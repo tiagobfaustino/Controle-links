@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getPb } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-type Participante = { id: number; nome: string };
+type Participante = { id: string; numeroCurso: number; nome: string };
 
 export default function NovoUsuarioPage() {
   const router = useRouter();
@@ -28,9 +29,13 @@ export default function NovoUsuarioPage() {
   });
 
   useEffect(() => {
-    fetch("/api/participantes")
-      .then((r) => r.json())
-      .then(setParticipantes);
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
+
+    pb.collection("participantes")
+      .getFullList<Participante>({ sort: "numeroCurso" })
+      .then(setParticipantes)
+      .catch(() => {});
   }, []);
 
   function set(field: string, value: string) {
@@ -41,26 +46,27 @@ export default function NovoUsuarioPage() {
     e.preventDefault();
     setLoading(true);
 
-    const body = {
-      nome: form.nome,
-      email: form.email,
-      role: form.role,
-      participanteId: form.participanteId ? Number(form.participanteId) : null,
-    };
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
 
-    const res = await fetch("/api/usuarios", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-
-    setLoading(false);
-    if (res.ok) {
-      toast.success(`Usuário criado com senha provisória tpcefs2026`);
+    try {
+      await pb.collection("users").create({
+        email: form.email,
+        password: "tpcefs2026",
+        passwordConfirm: "tpcefs2026",
+        name: form.nome,
+        role: form.role,
+        firstLogin: true,
+        participante: form.role === "PARTICIPANTE" && form.participanteId ? form.participanteId : undefined,
+        emailVisibility: true,
+      });
+      toast.success("Usuário criado com senha provisória tpcefs2026");
       router.push("/usuarios");
-    } else {
-      const data = await res.json();
-      toast.error(data.error ?? "Erro ao criar usuário");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao criar usuário";
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -119,8 +125,8 @@ export default function NovoUsuarioPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {participantes.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {p.id} — {p.nome}
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.numeroCurso} — {p.nome}
                       </SelectItem>
                     ))}
                   </SelectContent>

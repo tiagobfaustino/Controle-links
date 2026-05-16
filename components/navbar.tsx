@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useAuth } from "@/contexts/auth";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -51,13 +51,10 @@ function NavLink({ href, icon, label, active, onClick }: NavLinkProps) {
 }
 
 export function Navbar() {
-  const { data: session } = useSession();
+  const { user, logout } = useAuth();
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const user = session?.user as
-    | { name?: string | null; email?: string | null; role?: string }
-    | undefined;
   const role = user?.role ?? "";
   const isAdmin = role === "ADMIN";
   const isGestorOrAdmin = role === "ADMIN" || role === "GESTOR";
@@ -84,10 +81,10 @@ export function Navbar() {
   ].filter((l) => l.show);
 
   const initials = user?.name
-    ? user.name
+    ? (user.name as string)
         .split(" ")
         .slice(0, 2)
-        .map((w) => w[0])
+        .map((w: string) => w[0])
         .join("")
         .toUpperCase()
     : "?";
@@ -118,7 +115,7 @@ export function Navbar() {
 
         {/* Desktop user menu */}
         <div className="hidden items-center gap-2 md:flex ml-auto">
-          {session && (
+          {user && (
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
@@ -126,7 +123,7 @@ export function Navbar() {
                     <span className="flex size-6 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                       {initials}
                     </span>
-                    <span className="max-w-[140px] truncate">{user?.name}</span>
+                    <span className="max-w-[140px] truncate">{user.name}</span>
                     <ChevronDown className="size-3.5 text-muted-foreground" />
                   </button>
                 }
@@ -134,14 +131,14 @@ export function Navbar() {
               <DropdownMenuContent align="end" className="min-w-[180px]">
                 <DropdownMenuLabel>
                   <div className="flex flex-col gap-0.5">
-                    <span className="font-medium">{user?.name}</span>
-                    <span className="text-xs text-muted-foreground font-normal">{user?.email}</span>
+                    <span className="font-medium">{user.name}</span>
+                    <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   variant="destructive"
-                  onClick={() => signOut({ callbackUrl: "/login" })}
+                  onClick={logout}
                 >
                   <LogOut className="size-4" />
                   Sair
@@ -180,19 +177,19 @@ export function Navbar() {
             ))}
           </div>
 
-          {session && (
+          {user && (
             <div className="mt-3 border-t pt-3">
               <div className="mb-2 flex items-center gap-3 px-3">
                 <span className="flex size-8 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">
                   {initials}
                 </span>
                 <div className="flex flex-col">
-                  <span className="text-sm font-medium">{user?.name}</span>
-                  <span className="text-xs text-muted-foreground">{user?.email}</span>
+                  <span className="text-sm font-medium">{user.name}</span>
+                  <span className="text-xs text-muted-foreground">{user.email}</span>
                 </div>
               </div>
               <button
-                onClick={() => signOut({ callbackUrl: "/login" })}
+                onClick={logout}
                 className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
               >
                 <LogOut className="size-4" />

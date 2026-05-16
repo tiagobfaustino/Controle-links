@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { getPb } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,20 +28,17 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
-        email,
-        password,
-        redirect: false,
-      });
+      const pb = getPb();
+      await pb.collection("users").authWithPassword(email, password);
+      document.cookie = pb.authStore.exportToCookie({ httpOnly: false });
 
-      if (result?.error) {
-        setError("Email ou senha inválidos. Tente novamente.");
-      } else if (result?.ok) {
+      if (pb.authStore.model?.firstLogin) {
+        router.push("/alterar-senha");
+      } else {
         router.push("/dashboard");
-        router.refresh();
       }
     } catch {
-      setError("Erro ao conectar. Tente novamente.");
+      setError("Email ou senha inválidos. Tente novamente.");
     } finally {
       setLoading(false);
     }

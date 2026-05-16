@@ -2,9 +2,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { getPb } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Pencil, Power } from "lucide-react";
 
 type Demanda = {
@@ -15,11 +16,13 @@ type Demanda = {
   horaLimite: string;
   responsavel: string;
   celularResp: string;
-  ativa: number;
+  ativa: boolean;
 };
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR");
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString("pt-BR");
 }
 
 export default function DemandasPage() {
@@ -27,22 +30,30 @@ export default function DemandasPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/demandas")
-      .then((r) => r.json())
-      .then((d) => { setDemandas(d); setLoading(false); });
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
+
+    pb.collection("demandas")
+      .getFullList<Demanda>({ sort: "-created" })
+      .then((d) => {
+        setDemandas(d);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   async function toggleAtiva(d: Demanda) {
-    const res = await fetch(`/api/demandas/${d.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ativa: !d.ativa }),
-    });
-    if (res.ok) {
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
+
+    try {
+      await pb.collection("demandas").update(d.id, { ativa: !d.ativa });
       setDemandas((prev) =>
-        prev.map((x) => (x.id === d.id ? { ...x, ativa: d.ativa ? 0 : 1 } : x))
+        prev.map((x) => (x.id === d.id ? { ...x, ativa: !d.ativa } : x))
       );
       toast.success(d.ativa ? "Demanda desativada" : "Demanda ativada");
+    } catch {
+      toast.error("Erro ao alterar status da demanda");
     }
   }
 

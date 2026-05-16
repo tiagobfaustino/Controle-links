@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { getPb } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,10 +24,17 @@ type DemandaFormProps = {
 export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+
+  // prazo from PocketBase is like "2026-05-20 00:00:00.000Z" — extract date part
+  function extractDate(prazo?: string): string {
+    if (!prazo) return "";
+    return prazo.split(" ")[0] ?? prazo.split("T")[0] ?? "";
+  }
+
   const [form, setForm] = useState({
     titulo: initial.titulo ?? "",
     linkForm: initial.linkForm ?? "",
-    prazo: initial.prazo ? initial.prazo.split("T")[0] : "",
+    prazo: extractDate(initial.prazo),
     horaLimite: initial.horaLimite ?? "18:00",
     responsavel: initial.responsavel ?? "",
     celularResp: initial.celularResp ?? "",
@@ -40,23 +48,38 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
     e.preventDefault();
     setLoading(true);
 
-    const url = mode === "create" ? "/api/demandas" : `/api/demandas/${initial.id}`;
-    const method = mode === "create" ? "POST" : "PATCH";
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, prazo: new Date(form.prazo).toISOString() }),
-    });
+    // PocketBase date format: "YYYY-MM-DD 00:00:00.000Z"
+    const prazoFormatted = form.prazo
+      ? `${form.prazo} 00:00:00.000Z`
+      : form.prazo;
 
-    setLoading(false);
-    if (res.ok) {
-      toast.success(mode === "create" ? "Demanda criada!" : "Demanda atualizada!");
+    const payload = {
+      titulo: form.titulo,
+      linkForm: form.linkForm,
+      prazo: prazoFormatted,
+      horaLimite: form.horaLimite,
+      responsavel: form.responsavel,
+      celularResp: form.celularResp,
+    };
+
+    try {
+      if (mode === "create") {
+        await pb.collection("demandas").create({ ...payload, ativa: true });
+        toast.success("Demanda criada!");
+      } else {
+        await pb.collection("demandas").update(initial.id!, payload);
+        toast.success("Demanda atualizada!");
+      }
       router.push("/demandas");
       router.refresh();
-    } else {
-      const data = await res.json();
-      toast.error(data.error ?? "Erro ao salvar");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erro ao salvar";
+      toast.error(message);
+    } finally {
+      setLoading(false);
     }
   }
 
