@@ -48,6 +48,8 @@ migrate((app) => {
     type: "text",
   }));
 
+  usersCollection.listRule = "@request.auth.id != ''";
+  usersCollection.viewRule = "@request.auth.id != ''";
   usersCollection.manageRule = "id = @request.auth.id || @request.auth.role = \"ADMIN\"";
 
   app.save(usersCollection);
@@ -69,8 +71,8 @@ migrate((app) => {
   demandas.listRule = "@request.auth.id != ''";
   demandas.viewRule = "@request.auth.id != ''";
   demandas.createRule = "@request.auth.id != ''";
-  demandas.updateRule = "@request.auth.id != ''";
-  demandas.deleteRule = "@request.auth.role = \"ADMIN\"";
+  demandas.updateRule = "@request.auth.role = \"ADMIN\" || responsavel = @request.auth.nomeFuncional || responsavel = @request.auth.name";
+  demandas.deleteRule = "@request.auth.role = \"ADMIN\" || responsavel = @request.auth.nomeFuncional || responsavel = @request.auth.name";
 
   demandas.fields.add(new Field({ name: "titulo", type: "text", required: true }));
   demandas.fields.add(new Field({ name: "linkForm", type: "url", required: true }));
@@ -92,8 +94,8 @@ migrate((app) => {
 
   cumprimento.listRule = "@request.auth.id != ''";
   cumprimento.viewRule = "@request.auth.id != ''";
-  cumprimento.createRule = "@request.auth.id != ''";
-  cumprimento.deleteRule = "@request.auth.id != ''";
+  cumprimento.createRule = "user = @request.auth.id || demanda.responsavel = @request.auth.nomeFuncional || demanda.responsavel = @request.auth.name";
+  cumprimento.deleteRule = "user = @request.auth.id || demanda.responsavel = @request.auth.nomeFuncional || demanda.responsavel = @request.auth.name";
 
   cumprimento.fields.add(new Field({
     name: "user",
@@ -135,6 +137,8 @@ migrate((app) => {
       const field = users.fields.getByName(name);
       if (field) users.fields.remove(field);
     }
+    users.listRule = null;
+    users.viewRule = null;
     users.manageRule = null;
     app.save(users);
   } catch (_) {}
