@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getPb } from "@/lib/pocketbase";
+import { formatPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,18 +67,19 @@ export default function NovoUsuarioPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Novo Usuário</CardTitle>
-          <p className="text-sm text-muted-foreground">
+    <div className="mx-auto max-w-xl">
+      <Card className="border-2 border-primary/70">
+        <CardHeader className="border-b border-primary/40 bg-accent text-accent-foreground">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary/75">Cadastro de efetivo</p>
+          <CardTitle className="uppercase tracking-[0.08em] text-primary">Novo Usuário</CardTitle>
+          <p className="text-sm font-medium text-muted-foreground">
             A senha provisória será <strong>tpcefs2026</strong>. O usuário deverá alterá-la no primeiro acesso.
           </p>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={submit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
+        <CardContent className="bg-white pt-1">
+          <form onSubmit={submit} className="space-y-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label htmlFor="numeroCurso">Nº do Curso</Label>
                 <Input
                   id="numeroCurso"
@@ -87,7 +89,7 @@ export default function NovoUsuarioPage() {
                   placeholder="Ex.: 751"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label htmlFor="numPM">Nº PM</Label>
                 <Input
                   id="numPM"
@@ -99,7 +101,7 @@ export default function NovoUsuarioPage() {
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="nome">Nome completo</Label>
               <Input
                 id="nome"
@@ -110,7 +112,7 @@ export default function NovoUsuarioPage() {
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="nomeFuncional">
                 Nome funcional <span className="text-muted-foreground">(opcional)</span>
               </Label>
@@ -125,7 +127,7 @@ export default function NovoUsuarioPage() {
               </p>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -136,17 +138,18 @@ export default function NovoUsuarioPage() {
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="celular">Celular</Label>
               <Input
                 id="celular"
+                inputMode="tel"
                 value={form.celular}
-                onChange={(e) => set("celular", e.target.value)}
-                placeholder="(31) 99999-9999"
+                onChange={(e) => set("celular", formatPhone(e.target.value))}
+                placeholder="(31) 9999-9999"
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>Perfil</Label>
               <Select value={form.role} onValueChange={(v) => set("role", v)}>
                 <SelectTrigger>

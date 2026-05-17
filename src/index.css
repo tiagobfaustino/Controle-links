@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -49,38 +50,40 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --background: #eee7d3;
+  --foreground: #373435;
+  --card: #ffffff;
+  --card-foreground: #373435;
+  --popover: #fefefe;
+  --popover-foreground: #373435;
+  --primary: #373435;
+  --primary-foreground: #fefefe;
+  --secondary: #d8cfaf;
+  --secondary-foreground: #373435;
+  --muted: #d8cfaf;
+  --muted-foreground: #514b3f;
+  --accent: #a08f63;
+  --accent-foreground: #171615;
+  --destructive: #ab2328;
+  --border: #a08f63;
+  --input: #9a895e;
+  --ring: #a08f63;
+  --chart-1: #a08f63;
+  --chart-2: #373435;
+  --chart-3: #ab2328;
+  --chart-4: #d8cfaf;
+  --chart-5: #6d675a;
+  --radius: 0.375rem;
+  --sidebar: #373435;
+  --sidebar-foreground: #fefefe;
+  --sidebar-primary: #a08f63;
+  --sidebar-primary-foreground: #171615;
+  --sidebar-accent: #4a4644;
+  --sidebar-accent-foreground: #fefefe;
+  --sidebar-border: #5b5651;
+  --sidebar-ring: #a08f63;
+  --font-sans: Arial, Helvetica, sans-serif;
+  --font-impact: "Teko", Arial, Helvetica, sans-serif;
 }
 
 .dark {
@@ -122,9 +125,29 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      linear-gradient(180deg, rgba(55, 52, 53, 0.055), transparent 220px),
+      repeating-linear-gradient(135deg, rgba(160, 143, 99, 0.11) 0 1px, transparent 1px 18px);
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  [data-slot="card-title"],
+  button,
+  .tactical-heading {
+    font-family: var(--font-impact);
+  }
+}
+
+@layer utilities {
+  .military-panel {
+    @apply border border-border bg-card shadow-md;
+  }
+
+  .tactical-heading {
+    @apply text-xs font-black uppercase tracking-[0.16em] text-accent;
   }
 }

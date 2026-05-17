@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { getPb } from "@/lib/pocketbase";
+import { formatPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -84,7 +85,7 @@ export default function UsuariosPage() {
       nomeFuncional: u.nomeFuncional ?? "",
       email: u.email,
       role: u.role,
-      celular: u.celular ?? "",
+      celular: formatPhone(u.celular ?? ""),
       numeroCurso: u.numeroCurso ? String(u.numeroCurso) : "",
       numPM: u.numPM ? String(u.numPM) : "",
     });
@@ -163,9 +164,12 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-6xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Usuários</h1>
+    <div className="mx-auto max-w-6xl space-y-6">
+      <div className="flex items-center justify-between gap-4 border-l-4 border-accent bg-card px-4 py-3 shadow-sm">
+        <div>
+          <p className="tactical-heading">Efetivo autorizado</p>
+          <h1 className="mt-1 text-2xl font-black uppercase tracking-[0.06em]">Usuários</h1>
+        </div>
         <Button asChild>
           <Link to="/usuarios/novo">
             <Plus className="h-4 w-4 mr-2" />
@@ -177,28 +181,28 @@ export default function UsuariosPage() {
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-14 bg-muted animate-pulse rounded" />
+          <div key={i} className="h-14 bg-muted animate-pulse rounded-md" />
           ))}
         </div>
       ) : (
-        <div className="rounded-md border overflow-x-auto">
+        <div className="overflow-x-auto rounded-md border border-border bg-card shadow-sm">
           <table className="w-full text-sm">
-            <thead className="border-b bg-muted/50">
+            <thead className="border-b bg-primary text-primary-foreground">
               <tr>
-                <th className="px-4 py-3 text-left font-medium w-16">Nº Curso</th>
-                <th className="px-4 py-3 text-left font-medium w-20">Nº PM</th>
-                <th className="px-4 py-3 text-left font-medium">Nome completo</th>
-                <th className="px-4 py-3 text-left font-medium">Funcional</th>
-                <th className="px-4 py-3 text-left font-medium">Email</th>
-                <th className="px-4 py-3 text-left font-medium">Celular</th>
-                <th className="px-4 py-3 text-left font-medium">Perfil</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em] w-16">Nº Curso</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em] w-20">Nº PM</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em]">Nome completo</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em]">Funcional</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em]">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em]">Celular</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em]">Perfil</th>
+                <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-[0.08em]">Status</th>
                 <th className="px-4 py-3 text-right font-medium w-32"></th>
               </tr>
             </thead>
             <tbody>
               {usuarios.map((u) => (
-                <tr key={u.id} className="border-b hover:bg-muted/30">
+                <tr key={u.id} className="border-b hover:bg-muted/45">
                   <td className="px-4 py-3 font-mono text-muted-foreground">
                     {u.numeroCurso ?? "—"}
                   </td>
@@ -244,7 +248,7 @@ export default function UsuariosPage() {
                         onClick={() => setResetTarget(u)}
                         title="Redefinir senha"
                       >
-                        <KeyRound className="h-4 w-4 text-amber-600" />
+                        <KeyRound className="h-4 w-4 text-accent" />
                       </Button>
                       <Button
                         variant="ghost"
@@ -253,7 +257,7 @@ export default function UsuariosPage() {
                         title={!u.disabled ? "Desativar" : "Ativar"}
                       >
                         <Power
-                          className={`h-4 w-4 ${!u.disabled ? "text-green-600" : "text-gray-400"}`}
+                          className={`h-4 w-4 ${!u.disabled ? "text-accent" : "text-muted-foreground"}`}
                         />
                       </Button>
                     </div>
@@ -268,11 +272,11 @@ export default function UsuariosPage() {
       <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogTitle className="uppercase tracking-[0.08em]">Editar Usuário</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
                 <Label>Nº do Curso</Label>
                 <Input
                   type="number"
@@ -280,7 +284,7 @@ export default function UsuariosPage() {
                   onChange={(e) => setEditForm((f) => ({ ...f, numeroCurso: e.target.value }))}
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label>Nº PM</Label>
                 <Input
                   type="number"
@@ -289,14 +293,14 @@ export default function UsuariosPage() {
                 />
               </div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>Nome completo</Label>
               <Input
                 value={editForm.name}
                 onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>
                 Nome funcional <span className="text-muted-foreground">(opcional)</span>
               </Label>
@@ -309,7 +313,7 @@ export default function UsuariosPage() {
                 Parte do nome completo que aparece em <strong>negrito</strong> no dashboard.
               </p>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>Email</Label>
               <Input
                 type="email"
@@ -317,15 +321,16 @@ export default function UsuariosPage() {
                 onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>Celular</Label>
               <Input
+                inputMode="tel"
                 value={editForm.celular}
-                onChange={(e) => setEditForm((f) => ({ ...f, celular: e.target.value }))}
-                placeholder="(31) 99999-9999"
+                onChange={(e) => setEditForm((f) => ({ ...f, celular: formatPhone(e.target.value) }))}
+                placeholder="(31) 9999-9999"
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>Perfil</Label>
               <Select
                 value={editForm.role}
@@ -355,7 +360,7 @@ export default function UsuariosPage() {
       <Dialog open={!!resetTarget} onOpenChange={(o) => !o && setResetTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Redefinir senha</DialogTitle>
+            <DialogTitle className="uppercase tracking-[0.08em]">Redefinir senha</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             A senha de <strong>{resetTarget?.name}</strong> será redefinida para{" "}
