@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getPb } from "@/lib/pocketbase";
 import { formatPhone } from "@/lib/phone";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ErrorBanner, describeError } from "@/components/error-banner";
 import {
   Dialog,
   DialogContent,
@@ -57,26 +58,41 @@ const blankEdit = {
 };
 
 export default function UsuariosPage() {
+  const navigate = useNavigate();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [resetTarget, setResetTarget] = useState<Usuario | null>(null);
   const [resetting, setResetting] = useState(false);
   const [editTarget, setEditTarget] = useState<Usuario | null>(null);
   const [editForm, setEditForm] = useState(blankEdit);
   const [savingEdit, setSavingEdit] = useState(false);
 
-  useEffect(() => {
+  const fetchUsuarios = useCallback(async () => {
     const pb = getPb();
     pb.authStore.loadFromCookie(document.cookie);
 
-    pb.collection("users")
-      .getFullList<Usuario>({ sort: "numeroCurso,name" })
-      .then((d) => {
-        setUsuarios(d);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, []);
+    try {
+      const d = await pb
+        .collection("users")
+        .getFullList<Usuario>({ sort: "numeroCurso,name" });
+      setUsuarios(d);
+      setError(null);
+    } catch (err) {
+      console.error("usuarios fetch", err);
+      const { message, isAuthError } = describeError(err);
+      if (isAuthError) {
+        navigate("/login");
+        return;
+      }
+      setError(message);
+    }
+  }, [navigate]);
+
+  useEffect(() => {
+    setLoading(true);
+    fetchUsuarios().finally(() => setLoading(false));
+  }, [fetchUsuarios]);
 
   function openEdit(u: Usuario) {
     setEditTarget(u);
@@ -178,13 +194,24 @@ export default function UsuariosPage() {
         </Button>
       </div>
 
+      {error && (
+        <ErrorBanner
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            fetchUsuarios().finally(() => setLoading(false));
+          }}
+          retrying={loading}
+        />
+      )}
+
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-14 bg-muted animate-pulse rounded-md" />
           ))}
         </div>
-      ) : (
+      ) : error ? null : (
         <div className="overflow-x-auto rounded-md border border-border bg-card shadow-sm">
           <table className="w-full text-sm">
             <thead className="border-b bg-primary text-primary-foreground">

@@ -7,6 +7,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import { getPb } from "@/lib/pocketbase";
+import { loadAuthFromCookie } from "@/lib/auth-cookie";
 
 export type AuthUser = {
   id: string;
@@ -28,6 +29,20 @@ type AuthContextType = {
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+function sameUser(a: AuthUser | null, b: AuthUser | null): boolean {
+  return (
+    a?.id === b?.id &&
+    a?.email === b?.email &&
+    a?.name === b?.name &&
+    a?.nomeFuncional === b?.nomeFuncional &&
+    a?.role === b?.role &&
+    a?.firstLogin === b?.firstLogin &&
+    a?.celular === b?.celular &&
+    a?.numeroCurso === b?.numeroCurso &&
+    a?.numPM === b?.numPM
+  );
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -51,16 +66,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const syncUser = useCallback(() => {
     const pb = getPb();
-    if (pb.authStore.isValid && pb.authStore.model) {
-      setUser(modelToUser(pb.authStore.model as Record<string, unknown>));
-    } else {
-      setUser(null);
-    }
+    const next =
+      pb.authStore.isValid && pb.authStore.model
+        ? modelToUser(pb.authStore.model as Record<string, unknown>)
+        : null;
+
+    setUser((prev) => (sameUser(prev, next) ? prev : next));
   }, []);
 
   useEffect(() => {
-    const pb = getPb();
-    pb.authStore.loadFromCookie(document.cookie);
+    const pb = loadAuthFromCookie();
     syncUser();
     setLoading(false);
 

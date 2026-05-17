@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getPb } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { AlertCircle, Eye, EyeOff, LogIn, Shield } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, LogIn } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -46,12 +46,14 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
       <div className="mb-7 flex flex-col items-center text-center">
-        <div className="mb-4 flex size-16 items-center justify-center rounded-md border-2 border-primary bg-primary text-accent shadow-md">
-          <Shield className="size-9" />
-        </div>
-        <p className="tactical-heading">CEFS 2026 - Turma P</p>
+        <img
+          src="/android-chrome-192x192.png"
+          alt=""
+          className="mb-4 size-16 rounded-md border-2 border-primary object-cover shadow-md"
+        />
+        <p className="tactical-heading">Controle de Links</p>
         <h1 className="mt-2 text-3xl font-black uppercase tracking-[0.08em] text-foreground">
-          Controle de Links
+          CEFS 2026 - Turma P
         </h1>
         <p className="mt-2 max-w-sm text-sm font-medium text-muted-foreground">
           Gestão operacional de demandas e formulários
@@ -137,6 +139,13 @@ export default function LoginPage() {
                 </span>
               )}
             </Button>
+
+            <Link
+              to="/recuperar-senha"
+              className="text-center text-xs font-medium text-muted-foreground hover:text-primary underline"
+            >
+              Esqueci minha senha
+            </Link>
           </form>
         </CardContent>
       </Card>

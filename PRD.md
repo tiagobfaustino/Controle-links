@@ -1,357 +1,365 @@
-# PRD — Controle de Links (App Web)
+# PRD v2 — Controle de Links (Evolução)
 
-## 1. Visão Geral
-
-**Problema:** A planilha atual exige acesso ao Google Sheets para gerenciar demandas e acompanhar o cumprimento de atividades dos participantes de um curso. Isso dificulta a operação no dia a dia, não oferece notificações e não é amigável em mobile.
-
-**Solução:** Um app web Next.js que substitui a planilha com uma interface moderna, rápida e responsiva, mantendo toda a lógica existente e adicionando funcionalidades de UX relevantes.
+> Documento de evolução do [PRD.md](PRD.md) original. Reflete o estado atual do código (pós-migração Next.js → Vite + PocketBase) e prioriza as melhorias do próximo ciclo.
 
 ---
 
-## 2. Contexto da Planilha
+## 1. Contexto
 
-A planilha tem 3 abas:
+O MVP está em produção e cobre o caso de uso central: dashboard cruzado de Usuários × Demandas, com marcação manual de cumprimento, WhatsApp pré-formatado e relatório PDF por demanda. A operação validou o app, mas três fricções recorrentes apareceram:
 
-| Aba | Função |
-|-----|--------|
-| **Configuração (ADICIONAR LINKS)** | Cada linha define uma "Demanda": nome, link do Google Form, prazo, hora-limite, responsável, celular do responsável e se está ativa |
-| **Lista de Participantes** | Nº Curso, Nome Completo, Celular — 28 alunos (751–778) |
-| **Progresso** | Mesma lista + coluna `% Cumprimento` por aluno + linha TOTAL |
+1. **Cobrança ainda é manual** — quem precisa lembrar do prazo é o responsável, no WhatsApp, um a um.
+2. **Marcação 1-a-1 é tediosa** — para 28 alunos × várias demandas, o responsável clica muito. Marcar/desmarcar em lote e filtrar por pendentes economiza tempo.
+3. **Reset de senha gargala no admin** — todo esquecimento vira mensagem privada.
 
-**Lógica central:** cada Demanda é uma tarefa que os alunos devem cumprir submetendo um Google Form. O sistema rastreia quem cumpriu o quê e calcula o percentual de cumprimento individual e geral.
+> **Sobre os Google Forms:** os formulários são gerados pela coordenação do curso, não pelos gestores do app. Integração automática (webhook do Forms) está fora de escopo por essa razão — está fora do nosso controle.
 
----
-
-## 3. Stack Recomendada
-
-**Next.js 14+ (App Router)** — roteamento, SSR e API routes em um único projeto, sem backend separado.
-
-| Camada | Tecnologia |
-|--------|-----------|
-| Framework | Next.js 14 (App Router) |
-| Linguagem | TypeScript |
-| Estilo | Tailwind CSS |
-| Componentes | shadcn/ui |
-| Banco de dados | SQLite via Prisma (local) ou Supabase (hosted) |
-| Autenticação | NextAuth.js com Credentials Provider |
-| Hash de senha | bcryptjs |
-
-> **Por que Next.js e não React puro?** A planilha tem dados persistentes que precisam de um backend. Next.js entrega API routes no mesmo projeto, sem precisar de um servidor separado. Deploy gratuito no Vercel.
+Este PRD endereça essas três fricções, alinha o documento com o código real e descreve a dívida técnica acumulada na migração.
 
 ---
 
-## 4. Autenticação e Controle de Acesso
+## 2. Estado atual (o que JÁ existe)
 
-### Todos os usuários fazem login
+| Área | Implementado |
+|------|--------------|
+| Stack | Vite + React 19 + React Router 6 + PocketBase 0.38 + Tailwind 4 + shadcn |
+| Auth | Login email/senha, troca obrigatória no 1º acesso, sessão via cookie PB |
+| Roles | `ADMIN`, `GESTOR` (o `PARTICIPANTE` previsto no PRD original foi descartado — todo usuário com login é GESTOR de si mesmo e das demandas das quais é responsável) |
+| Dashboard | Tabela cruzada com sticky column, % por usuário e por demanda, destaque da própria linha, WhatsApp por usuário e por responsável |
+| Visão pública | `GET /api/public-dashboard` ([pb_hooks/public-dashboard.pb.js](pb_hooks/public-dashboard.pb.js)) — leitura sem login, polling de 30s |
+| Demandas | CRUD completo, toggle ativa/inativa, exclusão com cascade em `cumprimento`, relatório PDF |
+| Usuários | CRUD individual, reset de senha pelo admin, edição inline |
+| Auditoria | Collection `cumprimento_log` append-only, hook PB grava actor + alvo a cada create/delete em `cumprimento`, rota `/demandas/:id/historico` (ADMIN) |
+| Recuperação de senha | Self-service via e-mail (`/recuperar-senha` + `/recuperar-senha/confirmar/:token`), SMTP Gmail |
+| Lembretes | Rota `/lembretes` agrega pendentes por responsável com links wa.me prontos (sem cron — sob demanda) |
+| PWA | Manifest + service worker básico + botão de instalação |
+| Realtime (autenticado) | Subscription PocketBase em `cumprimento` |
 
-O app é **totalmente autenticado** — não existe área pública. Todo acesso exige email e senha.
-
-### Perfis (Roles)
-
-| Role | Quem é | O que pode fazer |
-|------|--------|-----------------|
-| `ADMIN` | Responsável geral do sistema | Tudo: criar/editar demandas, gerenciar participantes, criar usuários, ver dashboard completo |
-| `GESTOR` | Responsável por inserir links | Criar e editar demandas (links, prazo, hora), ver dashboard completo, **não** gerencia usuários |
-| `PARTICIPANTE` | Aluno do curso (751–778) | Vê apenas suas próprias demandas pendentes, acessa o link do form, confirma o cumprimento |
-
-### Fluxo de autenticação (todos os perfis)
+### Modelo de dados atual
 
 ```
-ADMIN cria usuário (nome + email + role) → senha provisória "tpcefs2026"
-         ↓
-Usuário acessa /login → informa email + senha provisória
-         ↓
-Sistema detecta firstLogin = true
-         ↓
-Redireciona para /alterar-senha (obrigatório, não pode pular)
-         ↓
-Usuário define nova senha → firstLogin = false
-         ↓
-Middleware verifica role → redireciona para a home correta:
-  ADMIN/GESTOR  → /dashboard  (tabela cruzada completa)
-  PARTICIPANTE  → /minhas-demandas  (lista individual)
-```
-
-### Entidade: Usuário
-
-```ts
-{
-  id: string
-  email: string
-  senhaHash: string           // bcryptjs
-  nome: string
-  role: 'ADMIN' | 'GESTOR' | 'PARTICIPANTE'
-  firstLogin: boolean         // true = ainda usa senha provisória
-  ativo: boolean
-  participanteId: number | null  // FK → Participante (somente role=PARTICIPANTE)
-  criadoEm: Date
-}
-```
-
-### O que cada perfil vê após login
-
-#### Todos os perfis — `/dashboard`
-- Cards de resumo: demandas ativas, % médio de cumprimento, total de participantes
-- Tabela cruzada completa: **todos os participantes × todas as demandas ativas**
-- Cada participante vê o status de todos os colegas — incentivando a cobrança mútua
-- Barra de progresso por participante e linha de totais por demanda
-
-#### PARTICIPANTE (além do dashboard)
-- Na sua própria linha do dashboard: botão **"Acessar formulário"** para cada demanda pendente
-- Botão **"Confirmar cumprimento"** na sua linha (pode desfazer enquanto o prazo não venceu)
-- Não pode marcar cumprimento de outros participantes
-
-#### ADMIN / GESTOR (além do dashboard)
-- Checkboxes para marcar/desmarcar cumprimento de qualquer participante
-- Botões WhatsApp, exportar CSV, filtros avançados
-
-### Regras de senha
-
-- Senha provisória padrão: `tpcefs2026`
-- Nova senha: mínimo 8 caracteres
-- Sessão bloqueada enquanto `firstLogin = true` — sempre redireciona para `/alterar-senha`
-- Após troca: sessão JWT com validade de 8 horas
-
-### Matriz de permissões
-
-| Ação | ADMIN | GESTOR | PARTICIPANTE |
-|------|:-----:|:------:|:------------:|
-| Ver dashboard completo (todos os colegas) | ✅ | ✅ | ✅ |
-| Confirmar próprio cumprimento | ✅ | ✅ | ✅ |
-| Criar / editar demanda | ✅ | ✅ | ❌ |
-| Ativar / desativar demanda | ✅ | ✅ | ❌ |
-| Marcar cumprimento (qualquer participante) | ✅ | ✅ | ❌ |
-| Marcar cumprimento de outros | ✅ | ✅ | ❌ |
-| Gerenciar participantes | ✅ | ❌ | ❌ |
-| Criar / desativar usuários | ✅ | ❌ | ❌ |
-
-### Telas de autenticação e gestão de usuários
-
-| Rota | Perfil | Tela |
-|------|--------|------|
-| `/login` | Todos | Formulário email + senha |
-| `/alterar-senha` | Todos | Troca de senha obrigatória no 1º login |
-| `/usuarios` | ADMIN | Tabela: nome, email, role, status, data de criação |
-| `/usuarios/novo` | ADMIN | Formulário: nome, email, role → cria com senha `tpcefs2026` |
-
----
-
-## 5. Entidades de Dados
-
-### Participante
-```ts
-{
-  id: number          // Nº Curso (ex: 751)
-  nome: string        // Nome completo
-  celular: string     // (31) 99668-0419
-}
-```
-
-### Demanda
-```ts
-{
-  id: string
-  titulo: string      // Nome da demanda
-  linkForm: string    // URL do Google Form
-  prazo: Date         // Data limite
-  horaLimite: string  // "18:00"
-  responsavel: string // Nome do responsável
-  celularResp: string // Celular do responsável
-  ativa: boolean      // Visível ou não nas abas de tracking
-}
-```
-
-### Cumprimento
-```ts
-{
-  participanteId: number
-  demandaId: string
-  cumprido: boolean
-  dataRegistro: Date | null
-}
+users         id, email, name, nomeFuncional, role, firstLogin, disabled,
+              celular, numeroCurso, numPM
+demandas      id, titulo, linkForm, prazo, horaLimite, responsavel, celularResp, ativa
+cumprimento   id, user (FK), demanda (FK), dataRegistro
 ```
 
 ---
 
-## 6. Funcionalidades (Escopo MVP)
+## 3. Roadmap — 3 fases
 
-### F1 — Dashboard de Progresso (ADMIN / GESTOR)
-- Cards de resumo: total de demandas ativas, % médio de cumprimento, número de participantes
-- Tabela cruzada **Participantes × Demandas** com checkboxes (cumprido/pendente)
-- Linha de totais por demanda (coluna) e por participante (linha)
-- Filtro rápido: mostrar só pendentes / só cumpridos
-- Barra de progresso visual por participante
+### Fase 1 — Reduzir trabalho manual ✅ concluída
+1. F1.1 — Reset de senha self-service ✅
+2. F1.2 — Audit log de cumprimento ✅
+3. F1.3 — Erros visíveis no dashboard ✅
+4. F1.4 — Lembretes wa.me agregados (versão sob demanda, sem cron) ✅
 
-### F2 — Gerenciar Demandas (ADMIN / GESTOR)
-- Listagem de demandas com badge Ativa/Inativa
-- Formulário CRUD: criar, editar e arquivar demanda
-- Campos: Título, Link do Form, Prazo (date picker), Hora-Limite, Responsável, Celular
-- Toggle Ativa/Inativa sem excluir
+### Fase 2 — Filtros e ações em massa
+5. F2.3 — Filtros e ordenação no dashboard
+6. F2.4 — Bulk actions (marcar todos / nudge em massa)
 
-### F3 — Gerenciar Participantes (ADMIN)
-- Tabela com Nº Curso, Nome, Celular
-- Formulário de adição/edição de participante
-- Importar participantes via CSV (colagem direta)
+> Os itens F2.1 (Google Forms webhook) e F2.2 (importação CSV de usuários) foram removidos:
+> - **F2.1:** os formulários vêm da coordenação do curso, não dos gestores do app — não controlamos o lado do Forms para colar o Apps Script.
+> - **F2.2:** cadastro em lote não é necessidade recorrente — o cadastro individual atual cobre o ritmo da operação.
 
-### F4 — Registro de Cumprimento pelo Gestor (ADMIN / GESTOR)
-- Clicar no checkbox na tabela cruzada marca como cumprido com timestamp
-- Botão "Marcar todos" por demanda ou por participante
-- Desfazer marcação (toggle)
+### Fase 3 — Escala e UX
+7. F3.1 — Rota "Minhas pendências" (mobile-first)
+8. F3.2 — Timeline/calendário de demandas
+9. F3.3 — Multi-turma
+10. F3.4 — Push notifications via PWA
+11. F3.5 — Tags/categorias em demandas
 
-### F5 — Ações na Própria Linha (PARTICIPANTE — dentro do dashboard)
-- Na linha do participante logado, cada célula pendente exibe o botão **"Acessar formulário"** (abre o link em nova aba)
-- Botão **"Confirmar"** na célula correspondente registra o cumprimento com timestamp
-- Disponível para desfazer enquanto o prazo não venceu
-- A própria linha fica destacada visualmente para facilitar a localização
-
-### F6 — Ações Rápidas via WhatsApp (ADMIN / GESTOR)
-- Botão em cada linha de participante no dashboard: abre `wa.me/<celular>` com mensagem pré-formatada listando as demandas pendentes
-- Botão em cada demanda: copia lista de quem ainda não cumpriu
-
-### F7 — Exportar Relatório (ADMIN / GESTOR)
-- Exportar a tabela de progresso como CSV
+### Transversal — Dívida técnica
+- Atualizar [README.md](README.md) (ainda menciona Next.js)
+- Remover boilerplate Next em `public/` (`next.svg`, `vercel.svg`, `file.svg`, `globe.svg`, `window.svg`)
+- Hardening de cookie/CSP
+- Substituir polling público por SSE quando possível
+- Padronizar tratamento de erro (eliminar `catch {}` silenciosos)
 
 ---
 
-## 7. Telas e Rotas
+## 4. Especificações por funcionalidade
 
-```
-/login                        → Login (todos)
-/alterar-senha                → Troca de senha obrigatória no 1º login (todos)
+### F1.1 — Reset de senha self-service
 
-── Todos os perfis ───────────────────────────────────────────
-/dashboard                    → Tabela cruzada completa + cards de resumo
-                                (PARTICIPANTE vê botões de ação na própria linha)
+**Problema:** Toda recuperação de senha hoje gargala no ADMIN ([src/routes/usuarios/index.tsx:139-164](src/routes/usuarios/index.tsx#L139-L164)).
 
-── ADMIN / GESTOR ────────────────────────────────────────────
-/demandas                     → Lista de demandas
-/demandas/nova                → Criar demanda
-/demandas/[id]                → Editar demanda
+**Solução:** Link "Esqueci minha senha" na tela de login → tela de pedido de reset → envia e-mail com token via PocketBase nativo (`pb.collection('users').requestPasswordReset(email)`) → tela de confirmação com nova senha.
 
-── ADMIN apenas ──────────────────────────────────────────────
-/participantes                → Lista de participantes
-/participantes/[id]           → Detalhe + progresso individual
-/usuarios                     → Listar usuários
-/usuarios/novo                → Criar usuário (nome, email, role)
-```
+**Escopo:**
+- Nova rota `/recuperar-senha` (pedir e-mail)
+- Nova rota `/recuperar-senha/confirmar` (consumir token, definir nova senha)
+- Configurar SMTP no PocketBase
+- Template de e-mail em pt-BR
 
----
+**Fora de escopo:** SMS, magic link, recuperação por celular.
 
-## 8. UI/UX
+**Critérios de aceitação:**
+- [ ] Link "Esqueci minha senha" visível em [src/routes/login.tsx](src/routes/login.tsx)
+- [ ] E-mail chega em até 2 min com link de reset
+- [ ] Token expira em 1h
+- [ ] Após reset, usuário é direcionado para `/login`
+- [ ] Usuário com `firstLogin=true` ainda precisa trocar a senha provisória (não pula esse fluxo)
 
-- **Mobile-first:** a planilha é acessada pelo celular — a tabela cruzada deve ter scroll horizontal em telas pequenas, com a coluna do nome fixada (sticky)
-- **Cores de status:** verde (cumprido), amarelo (perto do prazo), vermelho (atrasado/pendente)
-- **Dark mode:** suportado via Tailwind + shadcn
-- **Totalmente autenticado:** não existe área pública; o middleware redireciona para `/login` se não houver sessão
-- **Home por role:** após login, ADMIN/GESTOR vai para `/dashboard`; PARTICIPANTE vai para `/minhas-demandas`
-- **Feedback imediato:** atualização otimista ao clicar no checkbox, sem reload de página
+**Esforço:** ~2h
 
 ---
 
-## 9. API Routes (Next.js)
+### F1.2 — Audit log de cumprimento
 
+**Problema:** Quando alguém desmarca um cumprimento, perde-se quem marcou e quando. Disputas viram "minha palavra contra a sua".
+
+**Solução:** Collection append-only `cumprimento_log` registra toda ação (criar/deletar) com autor, alvo e timestamp.
+
+**Modelo:**
 ```
-── Auth ──────────────────────────────────────────────────────
-POST   /api/auth/[...nextauth]         → NextAuth (login, logout, session)
-POST   /api/auth/alterar-senha         → troca de senha (requer sessão)
-
-── ADMIN + GESTOR ────────────────────────────────────────────
-GET    /api/demandas                   → listar demandas
-POST   /api/demandas                   → criar demanda
-PATCH  /api/demandas/[id]              → editar / ativar / desativar
-DELETE /api/demandas/[id]              → arquivar
-
-GET    /api/cumprimento                → tabela cruzada completa
-POST   /api/cumprimento                → marcar cumprido { participanteId, demandaId }
-DELETE /api/cumprimento                → desmarcar { participanteId, demandaId }
-
-── ADMIN apenas ──────────────────────────────────────────────
-GET    /api/participantes              → listar participantes
-POST   /api/participantes              → criar participante
-PATCH  /api/participantes/[id]         → editar participante
-
-GET    /api/usuarios                   → listar usuários
-POST   /api/usuarios                   → criar usuário (nome, email, role)
-PATCH  /api/usuarios/[id]              → ativar / desativar
-
-── PARTICIPANTE ──────────────────────────────────────────────
-GET    /api/cumprimento                → mesma rota (vê a tabela completa, somente leitura)
-POST   /api/cumprimento/proprio        → confirmar próprio cumprimento { demandaId }
-DELETE /api/cumprimento/proprio        → desfazer confirmação { demandaId }
+cumprimento_log
+  id, action ('create' | 'delete'), demanda (FK), targetUser (FK),
+  actor (FK users), createdAt, sourceIp?
 ```
 
----
+**Escopo:**
+- Migration para a collection
+- Hook PB `onRecordAfterCreateRequest("cumprimento")` e `onRecordAfterDeleteRequest("cumprimento")` populam o log
+- Tela `/demandas/:id/historico` (somente ADMIN) lista entradas
+- Tooltip no dashboard mostrando "marcado por X em DD/MM HH:mm" no hover (autenticado)
 
-## 10. Critérios de Aceitação (MVP)
+**Critérios de aceitação:**
+- [ ] Criar/excluir cumprimento gera entrada no log automaticamente
+- [ ] Log é imutável (sem update/delete via API pública)
+- [ ] ADMIN vê histórico completo de uma demanda
+- [ ] Usuário autenticado vê quem marcou seu próprio cumprimento
 
-**Auth**
-- [ ] Login com email + senha funciona para os três perfis
-- [ ] Primeiro login com `tpcefs2026` redireciona obrigatoriamente para `/alterar-senha`
-- [ ] Nenhuma rota é acessível sem sessão válida
-- [ ] Sessão com `firstLogin=true` só acessa `/alterar-senha`
-- [ ] Após login, todos os perfis são redirecionados para `/dashboard`
-- [ ] GESTOR não consegue acessar `/usuarios` nem `/participantes`
-- [ ] PARTICIPANTE não consegue acessar `/demandas` nem `/participantes` nem `/usuarios`
-
-**ADMIN / GESTOR**
-- [ ] Tabela cruzada mostra todos os 28 participantes × todas as demandas ativas
-- [ ] Clicar no checkbox persiste o cumprimento imediatamente
-- [ ] % de cumprimento por participante e total são calculados automaticamente
-- [ ] CRUD de demandas funciona sem recarregar a página
-- [ ] Botão WhatsApp abre app com número e mensagem pré-preenchidos
-- [ ] Exportar CSV da tabela de progresso
-- [ ] Interface funciona bem no celular (scroll horizontal com nome fixo)
-
-**ADMIN**
-- [ ] ADMIN consegue criar usuários com qualquer role e senha `tpcefs2026`
-- [ ] ADMIN consegue ativar/desativar usuários
-
-**PARTICIPANTE**
-- [ ] Vê o dashboard completo com o status de todos os colegas
-- [ ] Sua própria linha fica destacada no dashboard
-- [ ] Botão "Acessar formulário" aparece nas suas células pendentes e abre o link em nova aba
-- [ ] Botão "Confirmar cumprimento" registra com timestamp e atualiza status visual
-- [ ] Confirmação pode ser desfeita enquanto o prazo não venceu
-- [ ] Não consegue marcar cumprimento de outros participantes
+**Esforço:** ~3h
 
 ---
 
-## 11. Fora do Escopo (MVP)
+### F1.3 — Erros visíveis no dashboard
 
-- Login social (Google, GitHub, etc.)
-- Recuperação de senha por e-mail (reset via link)
-- Integração direta com Google Forms (webhooks de submissão automática)
-- Notificações push ou e-mail
-- Histórico de alterações / audit log
-- Multi-turma / multi-curso
+**Problema:** [src/routes/dashboard.tsx:239](src/routes/dashboard.tsx#L239) engole erros (`catch {}`); usuário não sabe se a tabela está desatualizada por falha de rede.
 
----
+**Solução:** Estado de erro explícito + banner "Falha ao carregar — tentar novamente".
 
-## 12. Dados Iniciais (Seed)
+**Escopo:**
+- Estado `error: Error | null` em `DashboardPage`
+- Banner sticky no topo da tabela quando `error != null`
+- Botão "Tentar novamente" dispara `fetchData()`
+- Logar o erro no console com contexto (`console.error('dashboard fetch', err)`)
+- Mesma abordagem em [src/routes/demandas/index.tsx](src/routes/demandas/index.tsx) e [src/routes/usuarios/index.tsx](src/routes/usuarios/index.tsx)
 
-Os 28 participantes já cadastrados na planilha (Nº 751–778) devem ser populados no seed do banco ao iniciar o projeto, para que o app já inicie com os dados reais.
+**Critérios de aceitação:**
+- [ ] Desligar a rede e recarregar a página mostra banner de erro
+- [ ] Religar a rede + clicar "Tentar novamente" restaura os dados
+- [ ] Erros 401/403 redirecionam para `/login` em vez de mostrar banner
 
-O usuário ADMIN master é criado no seed com:
-- Email: via variável de ambiente `ADMIN_EMAIL`
-- Senha hash: `bcrypt("tpcefs2026")`
-- `role: "ADMIN"`, `firstLogin: true`
-
-Os 28 participantes da planilha são criados na tabela `Participante`. Contas de usuário para eles são criadas pelo ADMIN via `/usuarios/novo` com `role: "PARTICIPANTE"`, vinculando o `participanteId` correspondente.
+**Esforço:** ~1h
 
 ---
 
-## 13. Estimativa de Desenvolvimento
+### F1.4 — Lembretes automáticos
 
-| Fase | Descrição | Esforço estimado |
-|------|-----------|-----------------|
-| Setup | Next.js + Prisma + shadcn + seed | 2h |
-| Auth | NextAuth + login + troca de senha + middleware por role | 4h |
-| Usuários | CRUD de usuários com seleção de role | 1h |
-| F1 | Dashboard (tabela cruzada ADMIN/GESTOR) | 4h |
-| F2 | CRUD de demandas | 2h |
-| F3 | CRUD de participantes + import CSV | 2h |
-| F4 | Registro de cumprimento (gestor via checkbox) | 2h |
-| F5 | Ações do participante na própria linha do dashboard | 1h |
-| F6 | Botões WhatsApp | 1h |
-| F7 | Exportar CSV | 1h |
-| **Total** | | **~20h** |
+**Problema:** Cobrança é 100% manual. Responsável tem que abrir o dashboard, clicar no WA de cada pendente, todo dia.
+
+**Solução:** Job PocketBase (`cronAdd`) que roda a cada 30 min e dispara mensagem para pendentes em janelas configuráveis (T-24h, T-3h, T-0).
+
+**Canais:**
+- **WhatsApp** via API Business (preferencial) ou link `wa.me` agregado (fallback manual)
+- **E-mail** como fallback
+
+**Modelo (configuração):**
+```
+notification_config
+  id, demanda (FK opcional, null = global),
+  enabled, channels (json: ['wa', 'email']),
+  windows (json: [{ offsetMinutes: -1440, template: '...' }, ...])
+
+notification_log
+  id, demanda, targetUser, channel, sentAt, status, error
+```
+
+**Escopo:**
+- Migration das duas collections
+- `pb_hooks/notify-cron.pb.js` com `cronAdd("notify", "*/30 * * * *", ...)`
+- Tela `/demandas/:id/notificacoes` para configurar janelas e templates
+- Variáveis de template: `{nome}`, `{titulo}`, `{prazo}`, `{horaLimite}`, `{linkForm}`
+
+**Fora de escopo (v1):** SMS, retry automático, throttling por usuário entre demandas.
+
+**Critérios de aceitação:**
+- [ ] Demanda com prazo amanhã 18h → mensagem dispara hoje entre 17:30-18:00
+- [ ] Cumprimento marcado entre disparos cancela o envio das janelas restantes
+- [ ] `notification_log` registra tentativa e status (sucesso/erro)
+- [ ] Tela de config permite ativar/desativar por demanda
+- [ ] Janelas globais (default) aplicam a toda demanda sem config própria
+
+**Esforço:** ~6h (WhatsApp via link `wa.me` agregado) / ~12h (API Business com aprovação Meta)
+
+---
+
+### F2.3 — Filtros e ordenação no dashboard
+
+**Problema:** Tabela hoje tem ordenação fixa `numeroCurso, name` e mostra tudo. Difícil focar em quem está pendente.
+
+**Solução:** Toolbar acima da tabela com:
+- Toggle "Apenas pendentes" (oculta usuários 100%)
+- Toggle "Apenas vencidas" (filtra colunas de demanda)
+- Select de ordenação: `numeroCurso ↑`, `% cumprimento ↓`, `nome A-Z`
+- Filtro de busca por nome
+- Filtro por responsável (chips clicáveis)
+
+**Estado persistido em URL** (`?sort=pct&pending=1`) para compartilhamento.
+
+**Critérios de aceitação:**
+- [ ] Ativar "Apenas pendentes" e recarregar → toggle continua ativo (via URL)
+- [ ] Ordenar por % decrescente coloca quem tem 0% no topo
+- [ ] Busca filtra por `name` e `nomeFuncional`
+
+**Esforço:** ~3h
+
+---
+
+### F2.4 — Bulk actions
+
+**Problema:** Para 28 alunos, marcar 1 a 1 ou abrir 28 WhatsApps é trabalhoso.
+
+**Solução:** Menu por coluna de demanda (responsável):
+- "Marcar todos como cumpridos"
+- "Desmarcar todos"
+- "Copiar lista de pendentes" (clipboard)
+- "Abrir WhatsApp para todos os pendentes" (abre uma aba por contato — limitado a 10 por vez)
+
+**Permissão:** ADMIN sempre, GESTOR apenas para demandas onde é `responsavel`.
+
+**Critérios de aceitação:**
+- [ ] "Marcar todos" cria N `cumprimentos` em uma transação
+- [ ] Confirmação obrigatória antes de marcar (modal)
+- [ ] GESTOR não vê o menu em demandas de terceiros
+- [ ] Cada ação é registrada no `cumprimento_log` (F1.2)
+
+**Esforço:** ~2h
+
+---
+
+### F3.1 — Rota "Minhas pendências"
+
+**Problema:** Tabela cruzada é apertada em celular. Aluno só quer ver o que falta para ele.
+
+**Solução:** Rota `/minhas-pendencias` mobile-first, lista vertical de cards de demandas pendentes ordenadas por prazo, cada uma com botão "Abrir Form" e "Marcar cumprida".
+
+**Critérios de aceitação:**
+- [ ] Acessível pelo menu do navbar
+- [ ] Mostra apenas demandas ativas onde `cumprimento` não existe para o usuário logado
+- [ ] Cor por urgência: vermelho (vencida), amarelo (≤24h), verde (>24h)
+- [ ] Marcar cumprida atualiza otimisticamente e some o card
+
+**Esforço:** ~2h
+
+---
+
+### F3.2 — Timeline/calendário de demandas
+
+**Problema:** Ao criar demanda nova, é difícil ver se há sobreposição de prazos.
+
+**Solução:** Rota `/demandas/calendario` com visualização mensal, demandas plotadas no dia do `prazo`, com tooltip de % cumprimento.
+
+**Esforço:** ~4h
+
+---
+
+### F3.3 — Multi-turma
+
+**Problema:** Strings "CEFS 2026 - Turma P" hard-coded em [navbar.tsx:106](src/components/navbar.tsx#L106) e [login.tsx:54](src/routes/login.tsx#L54).
+
+**Solução:** Collection `turmas` (id, nome, sigla, ativa). `users` ganha FK `turma`. ADMIN troca de contexto via dropdown no navbar.
+
+**Esforço:** ~6h (data model + UI + ajustes em todas as queries)
+
+---
+
+### F3.4 — Push notifications via PWA
+
+**Problema:** PWA já instala, mas não notifica nada.
+
+**Solução:** Solicitar permissão de notificação após login. Backend envia push via VAPID quando:
+- Demanda nova é criada para o usuário (todas as demandas ativas afetam todos)
+- T-1h do prazo de uma demanda pendente
+
+**Esforço:** ~5h (VAPID keys + service worker push handler + backend dispatch)
+
+---
+
+### F3.5 — Tags/categorias em demandas
+
+**Problema:** Volume cresce, mistura "doc", "form", "reunião". Filtrar fica difícil.
+
+**Solução:** Campo `demandas.tags` (json array de strings). Chips de filtro na lista e no dashboard.
+
+**Esforço:** ~2h
+
+---
+
+## 5. Dívida técnica (paralela ao roadmap)
+
+| Item | Onde | Esforço |
+|------|------|---------|
+| Atualizar README (ainda diz Next.js) | [README.md](README.md) | 15min |
+| Remover SVGs Next | [public/](public/) | 5min |
+| Atualizar [PRD.md](PRD.md) ou marcá-lo como obsoleto (referenciando este) | raiz | 10min |
+| Padronizar tratamento de erro (eliminar `catch {}`) | [dashboard.tsx:239](src/routes/dashboard.tsx#L239), demais rotas | 1h |
+| CSP estrito + revisar `httpOnly:false` no cookie | [auth.tsx:79](src/contexts/auth.tsx#L79) | 2h (depende de hosting) |
+| Substituir polling público (30s) por SSE | [dashboard.tsx:254](src/routes/dashboard.tsx#L254) + hook PB | 2h |
+| Centralizar `pb.authStore.loadFromCookie(document.cookie)` (repetido em cada rota) | criar helper em [src/lib/pocketbase.ts](src/lib/pocketbase.ts) | 30min |
+
+---
+
+## 6. Mudanças no modelo de dados (consolidado)
+
+```
++ cumprimento_log         (F1.2) ✅ criada
++ turmas                  (F3.3)
+
+users           + turma (FK)                          (F3.3)
+demandas        + tags (json)                         (F3.5)
+                + turma (FK)                          (F3.3)
+```
+
+> Nota: o spec original previa `notification_config` / `notification_log` (F1.4 com cron) e `forms_orphan` (F2.1). Ambos foram descartados — F1.4 virou rota sob demanda sem persistência, e F2.1 saiu do escopo.
+
+---
+
+## 7. Métricas de sucesso (3 meses pós-deploy)
+
+| Métrica | Hoje (estimado) | Meta |
+|---------|-----------------|------|
+| Tickets de "esqueci minha senha" para o admin / semana | ~3 | 0 |
+| Cliques no botão WhatsApp na rota `/lembretes` / semana | 0 (rota nova) | medir baseline e crescer |
+| % de demandas com 100% de cumprimento até o prazo | ? (medir) | +20pp |
+| DAU mobile / DAU total | ? (medir) | ≥60% |
+| Cliques em "Marcar todos" (após F2.4) / semana | 0 | medir adoção |
+
+---
+
+## 8. Fora de escopo deste ciclo
+
+- **Integração automática com Google Forms (Apps Script webhook)** — os formulários são criados pela coordenação do curso, não pelos gestores do app; não temos como instalar o Apps Script no lado deles
+- **Importação CSV de usuários** — cadastro individual atende o ritmo da operação
+- **Lembretes automáticos por cron (envio direto via WhatsApp Business API ou e-mail)** — F1.4 entregou a versão sob demanda com links wa.me; envio agendado fica para um ciclo futuro se a operação pedir
+- App nativo iOS/Android (PWA cobre)
+- Integração com Microsoft Forms / Typeform
+- Dashboard de tendências históricas (gráficos de evolução por semana)
+- SSO corporativo
+- API pública versionada para terceiros
+
+---
+
+## 9. Estimativa total
+
+| Fase | Esforço | Status |
+|------|---------|--------|
+| Fase 1 — Reduzir trabalho manual | ~12h | ✅ concluída |
+| Fase 2 — Filtros e ações em massa | ~5h (F2.3: 3h + F2.4: 2h) | a fazer |
+| Fase 3 — Escala e UX | ~19h | a fazer |
+| Dívida técnica | ~6h | parcialmente endereçada |
+| **Total restante** | **~30h** | |
+
+Fase 2 deve ser executada na ordem listada: **F2.3 (filtros) antes de F2.4 (bulk actions)** — a barra de filtros é onde os toggles "marcar todos" naturalmente se encaixam, e implementar bulk sem filtros gera UX confusa (qual conjunto está sendo marcado?).

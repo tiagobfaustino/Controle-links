@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { useAuth } from "@/contexts/auth";
-import { Link, useLocation } from "react-router-dom";
+import { useTurma } from "@/contexts/turma";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { PwaInstall } from "@/components/pwa-install";
+import { NotificationsToggle } from "@/components/notifications-toggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,11 +18,14 @@ import {
   X,
   LayoutDashboard,
   ClipboardList,
+  Info,
   Users,
+  UserRound,
   LogOut,
   ChevronDown,
-  Shield,
   LogIn,
+  Bell,
+  ClipboardCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -40,7 +46,7 @@ function NavLink({ href, icon, label, active, onClick }: NavLinkProps) {
         "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold uppercase tracking-[0.04em] transition-colors",
         active
           ? "bg-accent text-accent-foreground"
-          : "text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground"
+          : "text-primary-foreground/75 hover:bg-primary-foreground/10 hover:text-primary-foreground",
       )}
     >
       {icon}
@@ -49,15 +55,25 @@ function NavLink({ href, icon, label, active, onClick }: NavLinkProps) {
   );
 }
 
+function toText(value: unknown): string {
+  return typeof value === "string" || typeof value === "number"
+    ? String(value)
+    : "";
+}
+
 export function Navbar() {
   const { user, logout } = useAuth();
+  const { turmas, selectedTurma, selectTurma } = useTurma();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const turmasAtivas = turmas.filter((t) => t.ativa);
+  const showTurmaSelector = turmas.length > 1 && user?.role === "ADMIN";
 
   const role = user?.role ?? "";
   const isAdmin = role === "ADMIN";
   const isGestorOrAdmin = role === "ADMIN" || role === "GESTOR";
-  const displayName = user?.nomeFuncional || user?.name || "";
+  const displayName = toText(user?.nomeFuncional) || toText(user?.name);
 
   const navLinks = [
     {
@@ -67,9 +83,21 @@ export function Navbar() {
       show: true,
     },
     {
+      href: "/minhas-pendencias",
+      icon: <ClipboardCheck className="size-4" />,
+      label: "Minhas",
+      show: !!user,
+    },
+    {
       href: "/demandas",
       icon: <ClipboardList className="size-4" />,
       label: "Demandas",
+      show: isGestorOrAdmin,
+    },
+    {
+      href: "/lembretes",
+      icon: <Bell className="size-4" />,
+      label: "Lembretes",
       show: isGestorOrAdmin,
     },
     {
@@ -77,6 +105,12 @@ export function Navbar() {
       icon: <Users className="size-4" />,
       label: "Usuários",
       show: isAdmin,
+    },
+    {
+      href: "/sobre",
+      icon: <Info className="size-4" />,
+      label: "Sobre",
+      show: true,
     },
   ].filter((l) => l.show);
 
@@ -96,18 +130,56 @@ export function Navbar() {
           to="/dashboard"
           className="mr-2 flex items-center gap-3 font-bold text-primary-foreground"
         >
-          <span className="flex size-9 items-center justify-center rounded-md border border-accent/70 bg-accent text-accent-foreground">
-            <Shield className="size-5" />
-          </span>
+          <img
+            src="/android-chrome-192x192.png"
+            alt=""
+            className="size-9 rounded-md border border-accent/70 object-cover shadow-sm"
+          />
           <span className="leading-none">
             <span className="block text-[11px] font-black uppercase tracking-[0.12em] text-accent">
-              CEFS 2026 - Turma P
+              Controle de Links
             </span>
             <span className="block text-sm uppercase tracking-[0.08em]">
-              Controle de Links
+              {selectedTurma?.nome ?? "CEFS 2026 - Turma P"}
             </span>
           </span>
         </Link>
+
+        {showTurmaSelector && (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <button
+                  type="button"
+                  className="hidden items-center gap-1.5 rounded-md border border-primary-foreground/20 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.04em] text-primary-foreground/85 transition-colors hover:bg-primary-foreground/10 md:inline-flex"
+                  title="Trocar turma"
+                >
+                  {selectedTurma?.sigla ?? "Turma"}
+                  <ChevronDown className="size-3 text-primary-foreground/60" />
+                </button>
+              }
+            />
+            <DropdownMenuContent align="start" className="min-w-[220px]">
+              <DropdownMenuLabel>
+                <span className="text-xs font-bold uppercase tracking-[0.06em] text-muted-foreground">
+                  Selecionar turma
+                </span>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {turmasAtivas.map((t) => (
+                <DropdownMenuItem
+                  key={t.id}
+                  onClick={() => selectTurma(t.id)}
+                  className={
+                    t.id === selectedTurma?.id ? "bg-accent/30 font-bold" : ""
+                  }
+                >
+                  {t.nome}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
 
         <div className="hidden flex-1 items-center gap-1 md:flex">
           {navLinks.map((link) => (
@@ -116,12 +188,16 @@ export function Navbar() {
               href={link.href}
               icon={link.icon}
               label={link.label}
-              active={pathname === link.href || pathname.startsWith(link.href + "/")}
+              active={
+                pathname === link.href || pathname.startsWith(link.href + "/")
+              }
             />
           ))}
         </div>
 
         <div className="hidden items-center gap-2 md:flex ml-auto">
+          {user && <NotificationsToggle />}
+          <PwaInstall />
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -130,7 +206,9 @@ export function Navbar() {
                     <span className="flex size-6 items-center justify-center rounded-sm bg-accent text-xs font-black text-accent-foreground">
                       {initials}
                     </span>
-                    <span className="max-w-[140px] truncate">{displayName}</span>
+                    <span className="max-w-[140px] truncate">
+                      {displayName}
+                    </span>
                     <ChevronDown className="size-3.5 text-primary-foreground/70" />
                   </button>
                 }
@@ -139,21 +217,28 @@ export function Navbar() {
                 <DropdownMenuLabel>
                   <div className="flex flex-col gap-0.5">
                     <span className="font-medium">{displayName}</span>
-                    <span className="text-xs text-muted-foreground font-normal">{user.email}</span>
+                    <span className="text-xs text-muted-foreground font-normal">
+                      {user.email}
+                    </span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onClick={logout}
-                >
+                <DropdownMenuItem onClick={() => navigate("/perfil")}>
+                  <UserRound className="size-4" />
+                  Meu perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem variant="destructive" onClick={logout}>
                   <LogOut className="size-4" />
                   Sair
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Button asChild variant="outline" className="border-primary-foreground/25 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
+            <Button
+              asChild
+              variant="outline"
+              className="border-primary-foreground/25 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+            >
               <Link to="/login">
                 <LogIn className="size-4" />
                 Entrar
@@ -170,7 +255,11 @@ export function Navbar() {
             aria-label="Menu"
             className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
           >
-            {mobileOpen ? <X className="size-5" /> : <Menu className="size-5" />}
+            {mobileOpen ? (
+              <X className="size-5" />
+            ) : (
+              <Menu className="size-5" />
+            )}
           </Button>
         </div>
       </div>
@@ -184,7 +273,9 @@ export function Navbar() {
                 href={link.href}
                 icon={link.icon}
                 label={link.label}
-                active={pathname === link.href || pathname.startsWith(link.href + "/")}
+                active={
+                  pathname === link.href || pathname.startsWith(link.href + "/")
+                }
                 onClick={() => setMobileOpen(false)}
               />
             ))}
@@ -198,9 +289,19 @@ export function Navbar() {
                 </span>
                 <div className="flex flex-col">
                   <span className="text-sm font-medium">{displayName}</span>
-                  <span className="text-xs text-primary-foreground/60">{user.email}</span>
+                  <span className="text-xs text-primary-foreground/60">
+                    {user.email}
+                  </span>
                 </div>
               </div>
+              <Link
+                to="/perfil"
+                onClick={() => setMobileOpen(false)}
+                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-bold uppercase tracking-[0.04em] text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
+              >
+                <UserRound className="size-4" />
+                Meu perfil
+              </Link>
               <button
                 onClick={logout}
                 className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-bold uppercase tracking-[0.04em] text-primary-foreground hover:bg-primary-foreground/10 transition-colors"
@@ -211,7 +312,11 @@ export function Navbar() {
             </div>
           ) : (
             <div className="mt-3 border-t border-primary-foreground/15 pt-3">
-              <Button asChild variant="outline" className="w-full border-primary-foreground/25 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground">
+              <Button
+                asChild
+                variant="outline"
+                className="w-full border-primary-foreground/25 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+              >
                 <Link to="/login" onClick={() => setMobileOpen(false)}>
                   <LogIn className="size-4" />
                   Entrar
@@ -219,6 +324,10 @@ export function Navbar() {
               </Button>
             </div>
           )}
+          <div className="mt-3 border-t border-primary-foreground/15 pt-3">
+            {user && <NotificationsToggle />}
+          <PwaInstall />
+          </div>
         </div>
       )}
     </nav>

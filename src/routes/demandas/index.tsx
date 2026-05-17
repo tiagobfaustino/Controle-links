@@ -1,19 +1,21 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
 import { getPb } from "@/lib/pocketbase";
 import { isDemandaVencida } from "@/lib/demanda";
+import { parseTags } from "@/lib/tags";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
+import { ErrorBanner, describeError } from "@/components/error-banner";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Power, ClipboardList, Trash2, FileText } from "lucide-react";
+import { Plus, Pencil, Power, ClipboardList, Trash2, FileText, History, CalendarDays } from "lucide-react";
 
 type Demanda = {
   id: string;
@@ -24,6 +26,7 @@ type Demanda = {
   responsavel: string;
   celularResp: string;
   ativa: boolean;
+  tags?: string;
 };
 
 type Usuario = {
@@ -88,9 +91,11 @@ function getResponsavelDisplayName(d: Demanda, usuarios: Usuario[]): string {
 
 export default function DemandasPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [demandas, setDemandas] = useState<Demanda[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Demanda | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [reporting, setReporting] = useState("");
@@ -107,36 +112,39 @@ export default function DemandasPage() {
     );
   }
 
-  useEffect(() => {
+  const fetchAll = useCallback(async () => {
     const pb = getPb();
     pb.authStore.loadFromCookie(document.cookie);
 
-    Promise.all([
-      pb.collection("demandas").getFullList<Demanda>({
-        sort: "-prazo",
-        requestKey: null,
-      }),
-      pb.collection("users").getFullList<Usuario>({
-        sort: "numeroCurso,name",
-        requestKey: null,
-      }),
-    ])
-      .then(([d, u]) => {
-        setDemandas(d);
-        setUsuarios(u);
-        setLoading(false);
-      })
-      .catch((err: unknown) => {
-        const status =
-          typeof err === "object" && err !== null && "status" in err
-            ? (err as { status?: number }).status
-            : undefined;
+    try {
+      const [d, u] = await Promise.all([
+        pb.collection("demandas").getFullList<Demanda>({
+          sort: "-prazo",
+          requestKey: null,
+        }),
+        pb.collection("users").getFullList<Usuario>({
+          sort: "numeroCurso,name",
+          requestKey: null,
+        }),
+      ]);
+      setDemandas(d);
+      setUsuarios(u);
+      setError(null);
+    } catch (err) {
+      console.error("demandas fetch", err);
+      const { message, isAuthError } = describeError(err);
+      if (isAuthError) {
+        navigate("/login");
+        return;
+      }
+      setError(message);
+    }
+  }, [navigate]);
 
-        if (status === 0) return;
-        toast.error("Erro ao carregar demandas");
-        setLoading(false);
-      });
-  }, []);
+  useEffect(() => {
+    setLoading(true);
+    fetchAll().finally(() => setLoading(false));
+  }, [fetchAll]);
 
   async function toggleAtiva(d: Demanda) {
     const pb = getPb();
@@ -152,8 +160,10 @@ export default function DemandasPage() {
       } else {
         toast.success("Demanda ativada");
       }
-    } catch {
-      toast.error("Erro ao alterar status da demanda");
+    } catch (err) {
+      console.error("toggle demanda", err);
+      const { message } = describeError(err);
+      toast.error(`Erro ao alterar status: ${message}`);
     }
   }
 
@@ -163,21 +173,16 @@ export default function DemandasPage() {
     setDeleting(true);
 
     try {
-      const cumprimentos = await pb.collection("cumprimento").getFullList<{ id: string }>({
-        filter: `demanda = "${d.id}"`,
-        requestKey: null,
-      });
-
-      await Promise.all(
-        cumprimentos.map((c) => pb.collection("cumprimento").delete(c.id)),
-      );
+      // Cumprimentos e log são apagados por cascade (migrations 700/800).
       await pb.collection("demandas").delete(d.id);
 
       setDemandas((prev) => prev.filter((x) => x.id !== d.id));
       setDeleteTarget(null);
       toast.error("Demanda excluída");
-    } catch {
-      toast.error("Erro ao excluir demanda");
+    } catch (err) {
+      console.error("delete demanda", err);
+      const { message } = describeError(err);
+      toast.error(`Erro ao excluir demanda: ${message}`);
     } finally {
       setDeleting(false);
     }
@@ -229,7 +234,7 @@ export default function DemandasPage() {
         headStyles: { fillColor: [160, 143, 99], textColor: [23, 22, 21] },
         body: [
           ["Titulo", d.titulo],
-          ["Link", d.linkForm],
+          ["Link", d.linkForm || "Sem link externo"],
           ["Responsavel", responsavel || d.responsavel],
           ["Prazo", `${formatDate(d.prazo)} as ${d.horaLimite}`],
           ["Status", status],
@@ -341,13 +346,32 @@ export default function DemandasPage() {
           <p className="tactical-heading">Controle de missão</p>
           <h1 className="mt-1 text-2xl font-black uppercase tracking-[0.06em]">Demandas</h1>
         </div>
-        <Button asChild>
-          <Link to="/demandas/nova">
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Demanda
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <Button asChild variant="outline">
+            <Link to="/demandas/calendario">
+              <CalendarDays className="h-4 w-4 mr-2" />
+              Calendário
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link to="/demandas/nova">
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Demanda
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      {error && (
+        <ErrorBanner
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            fetchAll().finally(() => setLoading(false));
+          }}
+          retrying={loading}
+        />
+      )}
 
       {loading ? (
         <div className="space-y-3">
@@ -355,7 +379,7 @@ export default function DemandasPage() {
             <div key={i} className="h-20 bg-muted animate-pulse rounded-md" />
           ))}
         </div>
-      ) : demandas.length === 0 ? (
+      ) : error ? null : demandas.length === 0 ? (
         <div className="military-panel flex flex-col items-center justify-center rounded-md py-16 text-center">
           <ClipboardList className="mb-4 size-12 text-muted-foreground/50" />
           <p className="font-bold text-muted-foreground">
@@ -458,17 +482,47 @@ function DemandaCard({
               Prazo: {formatDate(d.prazo)} às {d.horaLimite} — Resp.:{" "}
               {getResponsavelDisplayName(d, usuarios)}
             </p>
-            <a
-              href={d.linkForm}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm font-medium text-primary hover:text-accent hover:underline break-all"
-            >
-              {d.linkForm}
-            </a>
+            {parseTags(d.tags).length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {parseTags(d.tags).map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.04em] text-muted-foreground"
+                  >
+                    {t}
+                  </span>
+                ))}
+              </div>
+            )}
+            {d.linkForm ? (
+              <a
+                href={d.linkForm}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-1 block text-sm font-medium text-primary hover:text-accent hover:underline break-all"
+              >
+                {d.linkForm}
+              </a>
+            ) : (
+              <p className="mt-1 text-sm font-medium text-muted-foreground">
+                Sem link externo - confirmação feita apenas no app.
+              </p>
+            )}
           </div>
           {canManage && (
             <div className="flex gap-1 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                title="Ver logs de cumprimento"
+                className="gap-1.5 border-primary/30 text-primary hover:bg-secondary"
+              >
+                <Link to={`/demandas/${d.id}/historico`}>
+                  <History className="h-4 w-4" />
+                  Logs
+                </Link>
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"

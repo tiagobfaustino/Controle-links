@@ -49,6 +49,7 @@ routerAdd("GET", "/api/public-dashboard", (e) => {
     horaLimite: d.getString("horaLimite"),
     responsavel: d.getString("responsavel"),
     ativa: d.getBool("ativa"),
+    tags: d.getString("tags"),
   }));
 
   const publicCumprimentos = [];

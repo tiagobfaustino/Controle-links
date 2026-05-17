@@ -1,12 +1,21 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Navbar } from "@/components/navbar";
 import { RequireAuth } from "@/components/require-auth";
+import { NotificationsWatcher } from "@/components/notifications-watcher";
 import LoginPage from "@/routes/login";
 import AlterarSenhaPage from "@/routes/alterar-senha";
+import RecuperarSenhaPage from "@/routes/recuperar-senha/index";
+import ConfirmarRecuperacaoPage from "@/routes/recuperar-senha/confirmar";
 import DashboardPage from "@/routes/dashboard";
 import DemandasPage from "@/routes/demandas/index";
 import NovaDemandaPage from "@/routes/demandas/nova";
 import EditarDemandaPage from "@/routes/demandas/edit";
+import HistoricoDemandaPage from "@/routes/demandas/historico";
+import CalendarioDemandasPage from "@/routes/demandas/calendario";
+import LembretesPage from "@/routes/lembretes";
+import MinhasPendenciasPage from "@/routes/minhas-pendencias";
+import SobrePage from "@/routes/sobre";
+import PerfilPage from "@/routes/perfil";
 import UsuariosPage from "@/routes/usuarios/index";
 import NovoUsuarioPage from "@/routes/usuarios/novo";
 
@@ -21,9 +30,16 @@ function NavbarLayout({ children }: { children: React.ReactNode }) {
 
 export function App() {
   return (
-    <Routes>
+    <>
+      <NotificationsWatcher />
+      <Routes>
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/recuperar-senha" element={<RecuperarSenhaPage />} />
+      <Route
+        path="/recuperar-senha/confirmar/:token"
+        element={<ConfirmarRecuperacaoPage />}
+      />
       <Route
         path="/alterar-senha"
         element={
@@ -37,6 +53,14 @@ export function App() {
         element={
           <NavbarLayout>
             <DashboardPage />
+          </NavbarLayout>
+        }
+      />
+      <Route
+        path="/sobre"
+        element={
+          <NavbarLayout>
+            <SobrePage />
           </NavbarLayout>
         }
       />
@@ -61,11 +85,61 @@ export function App() {
         }
       />
       <Route
+        path="/demandas/calendario"
+        element={
+          <RequireAuth>
+            <NavbarLayout>
+              <CalendarioDemandasPage />
+            </NavbarLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
         path="/demandas/:id"
         element={
           <RequireAuth>
             <NavbarLayout>
               <EditarDemandaPage />
+            </NavbarLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/demandas/:id/historico"
+        element={
+          <RequireAuth>
+            <NavbarLayout>
+              <HistoricoDemandaPage />
+            </NavbarLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/lembretes"
+        element={
+          <RequireAuth>
+            <NavbarLayout>
+              <LembretesPage />
+            </NavbarLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/minhas-pendencias"
+        element={
+          <RequireAuth>
+            <NavbarLayout>
+              <MinhasPendenciasPage />
+            </NavbarLayout>
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/perfil"
+        element={
+          <RequireAuth>
+            <NavbarLayout>
+              <PerfilPage />
             </NavbarLayout>
           </RequireAuth>
         }
@@ -92,5 +166,6 @@ export function App() {
       />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+    </>
   );
 }

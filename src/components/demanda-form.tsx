@@ -1,13 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
+import { useTurma } from "@/contexts/turma";
 import { getPb } from "@/lib/pocketbase";
 import { formatPhone } from "@/lib/phone";
+import { parseTags, serializeTags, collectAllTags } from "@/lib/tags";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { X } from "lucide-react";
 
 type DemandaFormProps = {
   initial?: {
@@ -18,13 +21,23 @@ type DemandaFormProps = {
     horaLimite?: string;
     responsavel?: string;
     celularResp?: string;
+    tags?: string;
   };
   mode: "create" | "edit";
 };
 
+function RequiredMark() {
+  return (
+    <span className="ml-1 text-destructive" aria-label="obrigatório">
+      *
+    </span>
+  );
+}
+
 export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { selectedTurmaId } = useTurma();
   const [loading, setLoading] = useState(false);
 
   function extractDate(prazo?: string): string {
@@ -52,6 +65,49 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
     horaLimite: initial.horaLimite ?? "18:00",
   });
 
+  const [tags, setTags] = useState<string[]>(parseTags(initial.tags));
+  const [tagDraft, setTagDraft] = useState("");
+  const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    const pb = getPb();
+    pb.authStore.loadFromCookie(document.cookie);
+    pb.collection("demandas")
+      .getFullList<{ tags?: string }>({
+        fields: "tags",
+        requestKey: null,
+      })
+      .then((list) => setSuggestedTags(collectAllTags(list)))
+      .catch(() => {
+        // best-effort: tag autocomplete não bloqueia o formulário
+      });
+  }, []);
+
+  function addTag(raw: string) {
+    const normalized = raw.trim().toLowerCase();
+    if (!normalized) return;
+    setTags((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
+    setTagDraft("");
+  }
+
+  function removeTag(t: string) {
+    setTags((prev) => prev.filter((x) => x !== t));
+  }
+
+  function onTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      addTag(tagDraft);
+    } else if (e.key === "Backspace" && !tagDraft && tags.length > 0) {
+      setTags((prev) => prev.slice(0, -1));
+    }
+  }
+
+  const availableSuggestions = suggestedTags
+    .filter((s) => !tags.includes(s))
+    .filter((s) => !tagDraft || s.startsWith(tagDraft.toLowerCase()))
+    .slice(0, 6);
+
   const userDisplayName = user?.nomeFuncional || user?.name || "";
   const responsavel = mode === "edit" && initial.responsavel
     ? initial.responsavel
@@ -76,17 +132,22 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
       : form.prazo;
 
     const payload = {
-      titulo: form.titulo,
-      linkForm: form.linkForm,
+      titulo: form.titulo.trim(),
+      linkForm: form.linkForm.trim(),
       prazo: prazoFormatted,
       horaLimite: form.horaLimite,
       responsavel,
       celularResp,
+      tags: serializeTags(tags),
     };
 
     try {
       if (mode === "create") {
-        await pb.collection("demandas").create({ ...payload, ativa: true });
+        await pb.collection("demandas").create({
+          ...payload,
+          ativa: true,
+          ...(selectedTurmaId ? { turma: selectedTurmaId } : {}),
+        });
         toast.success("Demanda criada!");
       } else {
         await pb.collection("demandas").update(initial.id!, payload);
@@ -112,8 +173,16 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
         </CardHeader>
         <CardContent className="bg-white pt-1">
           <form onSubmit={submit} className="space-y-5">
+            <p className="text-xs font-medium text-muted-foreground">
+              Campos marcados com <span className="font-bold text-destructive">*</span>{" "}
+              são obrigatórios.
+            </p>
+
             <div className="space-y-2">
-              <Label htmlFor="titulo">Título</Label>
+              <Label htmlFor="titulo">
+                Título
+                <RequiredMark />
+              </Label>
               <Input
                 id="titulo"
                 value={form.titulo}
@@ -124,21 +193,28 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="linkForm">Link do Formulário</Label>
+              <Label htmlFor="linkForm">
+                Link do Formulário{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (opcional)
+                </span>
+              </Label>
               <Input
                 id="linkForm"
                 type="url"
                 value={form.linkForm}
                 onChange={(e) => set("linkForm", e.target.value)}
                 placeholder="https://forms.gle/..."
-                required
               />
             </div>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <Label htmlFor="prazo">Prazo</Label>
+                  <Label htmlFor="prazo">
+                    Prazo
+                    <RequiredMark />
+                  </Label>
                   <div className="flex gap-1.5">
                     <Button
                       type="button"
@@ -169,7 +245,10 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="horaLimite">Hora-limite</Label>
+                <Label htmlFor="horaLimite">
+                  Hora-limite
+                  <RequiredMark />
+                </Label>
                 <Input
                   id="horaLimite"
                   type="time"
@@ -178,6 +257,60 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
                   required
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="tags">
+                Tags{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (opcional — Enter ou vírgula para adicionar)
+                </span>
+              </Label>
+              <div className="flex flex-wrap items-center gap-1.5 rounded-md border border-input bg-background px-2 py-1.5 focus-within:ring-2 focus-within:ring-ring">
+                {tags.map((t) => (
+                  <span
+                    key={t}
+                    className="inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-bold text-primary-foreground"
+                  >
+                    {t}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(t)}
+                      className="hover:opacity-70"
+                      aria-label={`Remover tag ${t}`}
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+                <input
+                  id="tags"
+                  type="text"
+                  value={tagDraft}
+                  onChange={(e) => setTagDraft(e.target.value)}
+                  onKeyDown={onTagKeyDown}
+                  onBlur={() => tagDraft && addTag(tagDraft)}
+                  placeholder={tags.length === 0 ? "Ex: form, prova, reuniao" : ""}
+                  className="flex-1 min-w-[120px] bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                />
+              </div>
+              {availableSuggestions.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1 pt-1">
+                  <span className="text-xs font-medium text-muted-foreground mr-1">
+                    Sugestões:
+                  </span>
+                  {availableSuggestions.map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => addTag(s)}
+                      className="rounded-full border border-border bg-background px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                    >
+                      + {s}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

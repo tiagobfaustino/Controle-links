@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth } from "@/contexts/auth";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { getPb } from "@/lib/pocketbase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,38 +7,44 @@ import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
-import { AlertCircle, KeyRound, CheckCircle2 } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, KeyRound } from "lucide-react";
 
-export default function AlterarSenhaPage() {
+export default function ConfirmarRecuperacaoPage() {
+  const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [novaSenha, setNovaSenha] = useState("");
   const [confirmar, setConfirmar] = useState("");
-  const [errors, setErrors] = useState<{ novaSenha?: string; confirmar?: string; geral?: string }>({});
+  const [errors, setErrors] = useState<{
+    novaSenha?: string;
+    confirmar?: string;
+    geral?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
   function validate() {
-    const newErrors: typeof errors = {};
-
+    const next: typeof errors = {};
     if (novaSenha.length < 8) {
-      newErrors.novaSenha = "A senha deve ter pelo menos 8 caracteres.";
+      next.novaSenha = "A senha deve ter pelo menos 8 caracteres.";
     }
-
     if (confirmar !== novaSenha) {
-      newErrors.confirmar = "As senhas não coincidem.";
+      next.confirmar = "As senhas não coincidem.";
     }
-
-    return newErrors;
+    return next;
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrors({});
+
+    if (!token) {
+      setErrors({ geral: "Link inválido ou expirado." });
+      return;
+    }
 
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -47,33 +52,26 @@ export default function AlterarSenhaPage() {
       return;
     }
 
-    if (!user) {
-      setErrors({ geral: "Sessão expirada. Faça login novamente." });
-      return;
-    }
-
     setLoading(true);
-
     try {
       const pb = getPb();
-      pb.authStore.loadFromCookie(document.cookie);
-
-      await pb.collection("users").update(user.id, {
-        password: novaSenha,
-        passwordConfirm: confirmar,
-        firstLogin: false,
-      });
-
-      await pb.collection("users").authWithPassword(user.email, novaSenha);
-      document.cookie = pb.authStore.exportToCookie({ httpOnly: false });
-
+      await pb
+        .collection("users")
+        .confirmPasswordReset(token, novaSenha, confirmar);
       setSuccess(true);
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1500);
+      setTimeout(() => navigate("/login"), 2000);
     } catch (err: unknown) {
+      console.error("confirmPasswordReset", err);
+      const status =
+        typeof err === "object" && err !== null && "status" in err
+          ? (err as { status?: number }).status
+          : undefined;
       const message =
-        err instanceof Error ? err.message : "Erro ao alterar a senha. Tente novamente.";
+        status === 400
+          ? "Link inválido ou expirado. Solicite um novo na tela de login."
+          : err instanceof Error
+            ? err.message
+            : "Erro ao redefinir senha. Tente novamente.";
       setErrors({ geral: message });
     } finally {
       setLoading(false);
@@ -88,20 +86,22 @@ export default function AlterarSenhaPage() {
           alt=""
           className="mb-4 size-16 rounded-md border-2 border-primary object-cover shadow-md"
         />
-        <p className="tactical-heading">Segurança de acesso</p>
+        <p className="tactical-heading">Recuperação de acesso</p>
         <h1 className="mt-2 text-3xl font-black uppercase tracking-[0.08em] text-foreground">
           Controle de Links
         </h1>
         <p className="mt-2 text-sm font-medium text-muted-foreground">
-          Primeiro acesso — altere sua senha
+          Definir nova senha
         </p>
       </div>
 
       <Card className="w-full max-w-sm border-2 border-primary/70">
         <CardHeader className="border-b border-primary/40 bg-accent text-accent-foreground">
-          <CardTitle className="uppercase tracking-[0.08em] text-primary">Alterar Senha</CardTitle>
+          <CardTitle className="uppercase tracking-[0.08em] text-primary">
+            Nova senha
+          </CardTitle>
           <CardDescription>
-            Por segurança, você precisa definir uma nova senha antes de continuar.
+            Escolha uma nova senha para acessar o sistema.
           </CardDescription>
         </CardHeader>
         <CardContent className="bg-white pt-1">
@@ -109,8 +109,27 @@ export default function AlterarSenhaPage() {
             <div className="flex flex-col items-center gap-3 py-4 text-center">
               <CheckCircle2 className="size-10 text-accent" />
               <p className="text-sm font-bold text-primary">
-                Senha alterada com sucesso! Redirecionando...
+                Senha redefinida com sucesso!
               </p>
+              <p className="text-sm text-muted-foreground">
+                Redirecionando para o login...
+              </p>
+            </div>
+          ) : !token ? (
+            <div className="flex flex-col items-center gap-3 py-4 text-center">
+              <AlertCircle className="size-10 text-destructive" />
+              <p className="text-sm font-bold text-destructive">
+                Link inválido
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Solicite um novo link na tela de login.
+              </p>
+              <Button asChild variant="outline" className="mt-2">
+                <Link to="/recuperar-senha">
+                  <ArrowLeft className="size-4" />
+                  Solicitar novo link
+                </Link>
+              </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -158,11 +177,7 @@ export default function AlterarSenhaPage() {
                 )}
               </div>
 
-              <Button
-                type="submit"
-                className="mt-2 w-full h-9"
-                disabled={loading}
-              >
+              <Button type="submit" className="mt-2 w-full h-9" disabled={loading}>
                 {loading ? (
                   <span className="flex items-center gap-2">
                     <span className="size-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
