@@ -1,7 +1,9 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/auth";
 import { getPb } from "@/lib/pocketbase";
+import { formatPhone } from "@/lib/phone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +24,7 @@ type DemandaFormProps = {
 
 export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
 
   function extractDate(prazo?: string): string {
@@ -29,14 +32,33 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
     return prazo.split(" ")[0] ?? prazo.split("T")[0] ?? "";
   }
 
+  function formatInputDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  function setPrazoRapido(daysFromToday: number) {
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromToday);
+    set("prazo", formatInputDate(date));
+  }
+
   const [form, setForm] = useState({
     titulo: initial.titulo ?? "",
     linkForm: initial.linkForm ?? "",
     prazo: extractDate(initial.prazo),
     horaLimite: initial.horaLimite ?? "18:00",
-    responsavel: initial.responsavel ?? "",
-    celularResp: initial.celularResp ?? "",
   });
+
+  const userDisplayName = user?.nomeFuncional || user?.name || "";
+  const responsavel = mode === "edit" && initial.responsavel
+    ? initial.responsavel
+    : userDisplayName;
+  const celularResp = formatPhone(
+    mode === "edit" && initial.celularResp ? initial.celularResp : user?.celular ?? "",
+  );
 
   function set(field: string, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -58,8 +80,8 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
       linkForm: form.linkForm,
       prazo: prazoFormatted,
       horaLimite: form.horaLimite,
-      responsavel: form.responsavel,
-      celularResp: form.celularResp,
+      responsavel,
+      celularResp,
     };
 
     try {
@@ -80,14 +102,17 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>{mode === "create" ? "Nova Demanda" : "Editar Demanda"}</CardTitle>
+    <div className="mx-auto max-w-2xl">
+      <Card className="border-2 border-primary/70">
+        <CardHeader className="border-b border-primary/40 bg-accent text-accent-foreground">
+          <p className="text-xs font-black uppercase tracking-[0.16em] text-primary/75">Registro operacional</p>
+          <CardTitle className="uppercase tracking-[0.08em] text-primary">
+            {mode === "create" ? "Nova Demanda" : "Editar Demanda"}
+          </CardTitle>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={submit} className="space-y-4">
-            <div className="space-y-1">
+        <CardContent className="bg-white pt-1">
+          <form onSubmit={submit} className="space-y-5">
+            <div className="space-y-2">
               <Label htmlFor="titulo">Título</Label>
               <Input
                 id="titulo"
@@ -98,7 +123,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label htmlFor="linkForm">Link do Formulário</Label>
               <Input
                 id="linkForm"
@@ -110,9 +135,31 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label htmlFor="prazo">Prazo</Label>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="prazo">Prazo</Label>
+                  <div className="flex gap-1.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2.5 text-xs"
+                      onClick={() => setPrazoRapido(0)}
+                    >
+                      Hoje
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 px-2.5 text-xs"
+                      onClick={() => setPrazoRapido(1)}
+                    >
+                      Amanhã
+                    </Button>
+                  </div>
+                </div>
                 <Input
                   id="prazo"
                   type="date"
@@ -121,7 +168,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
                   required
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <Label htmlFor="horaLimite">Hora-limite</Label>
                 <Input
                   id="horaLimite"
@@ -133,26 +180,26 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
               </div>
             </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="responsavel">Responsável</Label>
-              <Input
-                id="responsavel"
-                value={form.responsavel}
-                onChange={(e) => set("responsavel", e.target.value)}
-                placeholder="Nome do responsável"
-                required
-              />
-            </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="celularResp">Celular do Responsável</Label>
-              <Input
-                id="celularResp"
-                value={form.celularResp}
-                onChange={(e) => set("celularResp", e.target.value)}
-                placeholder="(31) 99999-9999"
-                required
-              />
+            <div className="space-y-2">
+              <Label>Responsável pelo link</Label>
+              <div className="grid grid-cols-1 gap-3 rounded-md border border-input bg-muted/30 p-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                    Nome
+                  </p>
+                  <p className="mt-1 min-h-6 text-[15px] font-semibold text-foreground">
+                    {responsavel || "Usuário autenticado"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.08em] text-muted-foreground">
+                    Telefone
+                  </p>
+                  <p className="mt-1 min-h-6 text-[15px] font-semibold text-foreground">
+                    {celularResp || "Não informado"}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-3 pt-2">

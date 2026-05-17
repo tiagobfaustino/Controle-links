@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { useAuth } from "@/contexts/auth";
 import { getPb } from "@/lib/pocketbase";
 import { DemandaForm } from "@/components/demanda-form";
 
@@ -14,9 +15,14 @@ type Demanda = {
   ativa: boolean;
 };
 
+function normalizeIdentity(value?: string): string {
+  return (value || "").trim().toUpperCase();
+}
+
 export default function EditarDemandaPage() {
   const params = useParams();
   const id = params?.id as string;
+  const { user } = useAuth();
   const [demanda, setDemanda] = useState<Demanda | null>(null);
   const [notFound, setNotFound] = useState(false);
 
@@ -25,21 +31,50 @@ export default function EditarDemandaPage() {
     const pb = getPb();
     pb.authStore.loadFromCookie(document.cookie);
 
+    setNotFound(false);
+    setDemanda(null);
+
     pb.collection("demandas")
-      .getOne<Demanda>(id)
-      .then(setDemanda)
-      .catch(() => setNotFound(true));
+      .getOne<Demanda>(id, { requestKey: null })
+      .then((record) => {
+        setDemanda(record);
+        setNotFound(false);
+      })
+      .catch((err: unknown) => {
+        const status =
+          typeof err === "object" && err !== null && "status" in err
+            ? (err as { status?: number }).status
+            : undefined;
+
+        if (status === 0) return;
+        setNotFound(true);
+      });
   }, [id]);
 
-  if (notFound) {
-    return <p className="p-8 text-center">Demanda não encontrada.</p>;
+  if (!demanda) {
+    if (notFound) {
+      return <p className="p-8 text-center">Demanda não encontrada.</p>;
+    }
+
+    return (
+      <div className="mx-auto max-w-2xl">
+        <div className="h-64 bg-muted animate-pulse rounded-md" />
+      </div>
+    );
   }
 
-  if (!demanda) {
+  const responsavel = normalizeIdentity(demanda.responsavel);
+  const canManage =
+    user?.role === "ADMIN" ||
+    (responsavel !== "" &&
+      (responsavel === normalizeIdentity(user?.nomeFuncional) ||
+        responsavel === normalizeIdentity(user?.name)));
+
+  if (!canManage) {
     return (
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="h-64 bg-muted animate-pulse rounded-lg" />
-      </div>
+      <p className="p-8 text-center">
+        Você só pode editar demandas cadastradas por você.
+      </p>
     );
   }
 

@@ -14,7 +14,7 @@ function NavbarLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen flex flex-col">
       <Navbar />
-      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-6">{children}</main>
+      <main className="flex-1 mx-auto w-full max-w-7xl px-4 py-6 md:py-8">{children}</main>
     </div>
   );
 }
@@ -35,11 +35,9 @@ export function App() {
       <Route
         path="/dashboard"
         element={
-          <RequireAuth>
-            <NavbarLayout>
-              <DashboardPage />
-            </NavbarLayout>
-          </RequireAuth>
+          <NavbarLayout>
+            <DashboardPage />
+          </NavbarLayout>
         }
       />
       <Route

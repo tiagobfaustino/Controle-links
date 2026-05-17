@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     document.cookie =
       "pb_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     setUser(null);
-    navigate("/login");
+    navigate("/dashboard");
   }
 
   return (

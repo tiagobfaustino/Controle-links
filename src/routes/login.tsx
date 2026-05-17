@@ -11,12 +11,13 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { AlertCircle, LogIn } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, LogIn, Shield } from "lucide-react";
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -43,27 +44,33 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 px-4">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+      <div className="mb-7 flex flex-col items-center text-center">
+        <div className="mb-4 flex size-16 items-center justify-center rounded-md border-2 border-primary bg-primary text-accent shadow-md">
+          <Shield className="size-9" />
+        </div>
+        <p className="tactical-heading">CEFS 2026 - Turma P</p>
+        <h1 className="mt-2 text-3xl font-black uppercase tracking-[0.08em] text-foreground">
           Controle de Links
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Gestão de demandas e formulários
+        <p className="mt-2 max-w-sm text-sm font-medium text-muted-foreground">
+          Gestão operacional de demandas e formulários
         </p>
       </div>
 
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Entrar</CardTitle>
+      <Card className="w-full max-w-sm border-2 border-primary/70">
+        <CardHeader className="border-b border-primary/40 bg-accent text-accent-foreground">
+          <CardTitle className="uppercase tracking-[0.08em] text-primary">
+            Entrar
+          </CardTitle>
           <CardDescription>
             Informe suas credenciais para acessar o sistema.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-white pt-1">
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                 <AlertCircle className="size-4 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -85,16 +92,32 @@ export default function LoginPage() {
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={loading}
+                  className="pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((value) => !value)}
+                  className="absolute right-2 top-1/2 flex size-8 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                  disabled={loading}
+                >
+                  {showPassword ? (
+                    <EyeOff className="size-4" />
+                  ) : (
+                    <Eye className="size-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
             <Button

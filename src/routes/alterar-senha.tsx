@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { AlertCircle, KeyRound, CheckCircle2 } from "lucide-react";
+import { AlertCircle, KeyRound, CheckCircle2, Shield } from "lucide-react";
 
 export default function AlterarSenhaPage() {
   const navigate = useNavigate();
@@ -81,35 +81,39 @@ export default function AlterarSenhaPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-muted/30 px-4">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
+      <div className="mb-7 flex flex-col items-center text-center">
+        <div className="mb-4 flex size-16 items-center justify-center rounded-md border-2 border-primary bg-primary text-accent shadow-md">
+          <Shield className="size-9" />
+        </div>
+        <p className="tactical-heading">Segurança de acesso</p>
+        <h1 className="mt-2 text-3xl font-black uppercase tracking-[0.08em] text-foreground">
           Controle de Links
         </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-2 text-sm font-medium text-muted-foreground">
           Primeiro acesso — altere sua senha
         </p>
       </div>
 
-      <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle>Alterar Senha</CardTitle>
+      <Card className="w-full max-w-sm border-2 border-primary/70">
+        <CardHeader className="border-b border-primary/40 bg-accent text-accent-foreground">
+          <CardTitle className="uppercase tracking-[0.08em] text-primary">Alterar Senha</CardTitle>
           <CardDescription>
             Por segurança, você precisa definir uma nova senha antes de continuar.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-white pt-1">
           {success ? (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <CheckCircle2 className="size-10 text-green-600" />
-              <p className="text-sm font-medium text-green-700">
+              <CheckCircle2 className="size-10 text-accent" />
+              <p className="text-sm font-bold text-primary">
                 Senha alterada com sucesso! Redirecionando...
               </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {errors.geral && (
-                <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
                   <AlertCircle className="size-4 shrink-0" />
                   <span>{errors.geral}</span>
                 </div>
