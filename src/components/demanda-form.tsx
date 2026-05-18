@@ -7,6 +7,7 @@ import { getPb } from "@/lib/pocketbase";
 import { getDemandaDatePart } from "@/lib/demanda";
 import { formatPhone } from "@/lib/phone";
 import { parseTags, serializeTags, collectAllTags } from "@/lib/tags";
+import { toUpperPtBr } from "@/lib/text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -80,14 +81,16 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
   }
 
   const [form, setForm] = useState({
-    titulo: initial.titulo ?? "",
+    titulo: toUpperPtBr(initial.titulo ?? ""),
     linkForm: initial.linkForm ?? "",
     prazo: extractDate(initial.prazo),
     horaLimite: initial.horaLimite ?? "18:00",
-    observacao: initial.observacao ?? "",
+    observacao: toUpperPtBr(initial.observacao ?? ""),
   });
 
-  const [tags, setTags] = useState<string[]>(parseTags(initial.tags));
+  const [tags, setTags] = useState<string[]>(
+    parseTags(initial.tags).map(toUpperPtBr),
+  );
   const [tagDraft, setTagDraft] = useState("");
   const [suggestedTags, setSuggestedTags] = useState<string[]>([]);
 
@@ -99,14 +102,16 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
         fields: "tags",
         requestKey: null,
       })
-      .then((list) => setSuggestedTags(collectAllTags(list)))
+      .then((list) =>
+        setSuggestedTags([...new Set(collectAllTags(list).map(toUpperPtBr))]),
+      )
       .catch(() => {
         // best-effort: tag autocomplete não bloqueia o formulário
       });
   }, []);
 
   function addTag(raw: string) {
-    const normalized = raw.trim().toLowerCase();
+    const normalized = toUpperPtBr(raw.trim());
     if (!normalized) return;
     setTags((prev) => (prev.includes(normalized) ? prev : [...prev, normalized]));
     setTagDraft("");
@@ -127,7 +132,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
 
   const availableSuggestions = suggestedTags
     .filter((s) => !tags.includes(s))
-    .filter((s) => !tagDraft || s.startsWith(tagDraft.toLowerCase()))
+    .filter((s) => !tagDraft || s.startsWith(toUpperPtBr(tagDraft)))
     .slice(0, 6);
 
   const userDisplayName = user?.nomeFuncional || user?.name || "";
@@ -154,14 +159,14 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
       : form.prazo;
 
     const payload = {
-      titulo: form.titulo.trim(),
+      titulo: toUpperPtBr(form.titulo.trim()),
       linkForm: form.linkForm.trim(),
       prazo: prazoFormatted,
       horaLimite: form.horaLimite,
-      responsavel,
+      responsavel: toUpperPtBr(responsavel),
       celularResp,
       tags: serializeTags(tags),
-      observacao: form.observacao.trim(),
+      observacao: toUpperPtBr(form.observacao.trim()),
     };
 
     try {
@@ -208,7 +213,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
               <Input
                 id="titulo"
                 value={form.titulo}
-                onChange={(e) => set("titulo", e.target.value)}
+                onChange={(e) => set("titulo", toUpperPtBr(e.target.value))}
                 placeholder="Ex: Formulário de Inscrição"
                 required
               />
@@ -309,7 +314,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
                   id="tags"
                   type="text"
                   value={tagDraft}
-                  onChange={(e) => setTagDraft(e.target.value)}
+                  onChange={(e) => setTagDraft(toUpperPtBr(e.target.value))}
                   onKeyDown={onTagKeyDown}
                   onBlur={() => tagDraft && addTag(tagDraft)}
                   placeholder={tags.length === 0 ? "Ex: form, prova, reuniao" : ""}
@@ -345,7 +350,9 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
               <textarea
                 id="observacao"
                 value={form.observacao}
-                onChange={(e) => set("observacao", e.target.value)}
+                onChange={(e) =>
+                  set("observacao", toUpperPtBr(e.target.value))
+                }
                 placeholder="Instruções para o cumprimento da demanda"
                 rows={4}
                 className="flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"

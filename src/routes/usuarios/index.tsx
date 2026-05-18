@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getPb } from "@/lib/pocketbase";
 import { formatPhone } from "@/lib/phone";
+import { toUpperPtBr } from "@/lib/text";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -97,8 +98,8 @@ export default function UsuariosPage() {
   function openEdit(u: Usuario) {
     setEditTarget(u);
     setEditForm({
-      name: u.name ?? "",
-      nomeFuncional: u.nomeFuncional ?? "",
+      name: toUpperPtBr(u.name ?? ""),
+      nomeFuncional: toUpperPtBr(u.nomeFuncional ?? ""),
       email: u.email,
       role: u.role,
       celular: formatPhone(u.celular ?? ""),
@@ -115,8 +116,10 @@ export default function UsuariosPage() {
     pb.authStore.loadFromCookie(document.cookie);
 
     const payload: Record<string, unknown> = {
-      name: editForm.name,
-      nomeFuncional: editForm.nomeFuncional || null,
+      name: toUpperPtBr(editForm.name.trim()),
+      nomeFuncional: editForm.nomeFuncional
+        ? toUpperPtBr(editForm.nomeFuncional.trim())
+        : null,
       email: editForm.email,
       role: editForm.role,
       celular: editForm.celular || null,
@@ -324,7 +327,12 @@ export default function UsuariosPage() {
               <Label>Nome completo</Label>
               <Input
                 value={editForm.name}
-                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    name: toUpperPtBr(e.target.value),
+                  }))
+                }
               />
             </div>
             <div className="space-y-2">
@@ -333,7 +341,12 @@ export default function UsuariosPage() {
               </Label>
               <Input
                 value={editForm.nomeFuncional}
-                onChange={(e) => setEditForm((f) => ({ ...f, nomeFuncional: e.target.value }))}
+                onChange={(e) =>
+                  setEditForm((f) => ({
+                    ...f,
+                    nomeFuncional: toUpperPtBr(e.target.value),
+                  }))
+                }
                 placeholder="Ex.: ALENCAR"
               />
               <p className="text-xs text-muted-foreground">

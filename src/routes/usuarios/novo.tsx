@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { getPb } from "@/lib/pocketbase";
 import { formatPhone } from "@/lib/phone";
+import { toUpperPtBr } from "@/lib/text";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,13 +45,15 @@ export default function NovoUsuarioPage() {
         email: form.email,
         password: "tpcefs2026",
         passwordConfirm: "tpcefs2026",
-        name: form.nome,
+        name: toUpperPtBr(form.nome.trim()),
         role: form.role,
         firstLogin: true,
         emailVisibility: true,
       };
 
-      if (form.nomeFuncional) payload.nomeFuncional = form.nomeFuncional;
+      if (form.nomeFuncional) {
+        payload.nomeFuncional = toUpperPtBr(form.nomeFuncional.trim());
+      }
       if (form.celular) payload.celular = form.celular;
       if (form.numeroCurso) payload.numeroCurso = Number(form.numeroCurso);
       if (form.numPM) payload.numPM = Number(form.numPM);
@@ -106,7 +109,7 @@ export default function NovoUsuarioPage() {
               <Input
                 id="nome"
                 value={form.nome}
-                onChange={(e) => set("nome", e.target.value)}
+                onChange={(e) => set("nome", toUpperPtBr(e.target.value))}
                 placeholder="Ex.: ALENCAR CAMPOS DA SILVA"
                 required
               />
@@ -119,7 +122,9 @@ export default function NovoUsuarioPage() {
               <Input
                 id="nomeFuncional"
                 value={form.nomeFuncional}
-                onChange={(e) => set("nomeFuncional", e.target.value)}
+                onChange={(e) =>
+                  set("nomeFuncional", toUpperPtBr(e.target.value))
+                }
                 placeholder="Ex.: ALENCAR"
               />
               <p className="text-xs text-muted-foreground">

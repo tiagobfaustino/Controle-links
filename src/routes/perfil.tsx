@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
 import { loadAuthFromCookie } from "@/lib/auth-cookie";
 import { formatPhone } from "@/lib/phone";
+import { toUpperPtBr } from "@/lib/text";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -40,8 +41,8 @@ export default function PerfilPage() {
   useEffect(() => {
     if (!user) return;
     setForm({
-      name: user.name ?? "",
-      nomeFuncional: user.nomeFuncional ?? "",
+      name: toUpperPtBr(user.name ?? ""),
+      nomeFuncional: toUpperPtBr(user.nomeFuncional ?? ""),
       celular: formatPhone(user.celular ?? ""),
       email: user.email ?? "",
       senhaAtual: "",
@@ -77,8 +78,10 @@ export default function PerfilPage() {
 
     try {
       const updated = await pb.collection("users").update(user.id, {
-        name: form.name.trim(),
-        nomeFuncional: form.nomeFuncional.trim() || null,
+        name: toUpperPtBr(form.name.trim()),
+        nomeFuncional: form.nomeFuncional.trim()
+          ? toUpperPtBr(form.nomeFuncional.trim())
+          : null,
         celular: form.celular.trim() || null,
         email: form.email.trim(),
       });
@@ -140,7 +143,7 @@ export default function PerfilPage() {
                 <Input
                   id="name"
                   value={form.name}
-                  onChange={(e) => set("name", e.target.value)}
+                  onChange={(e) => set("name", toUpperPtBr(e.target.value))}
                   required
                   disabled={saving}
                 />
@@ -151,7 +154,9 @@ export default function PerfilPage() {
                 <Input
                   id="nomeFuncional"
                   value={form.nomeFuncional}
-                  onChange={(e) => set("nomeFuncional", e.target.value)}
+                  onChange={(e) =>
+                    set("nomeFuncional", toUpperPtBr(e.target.value))
+                  }
                   placeholder="Ex: FAUSTINO"
                   disabled={saving}
                 />
