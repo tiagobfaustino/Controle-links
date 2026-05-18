@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
 import { getPb } from "@/lib/pocketbase";
-import { isDemandaVencida } from "@/lib/demanda";
+import { getDemandaDeadline, isDemandaVencida } from "@/lib/demanda";
 import { parseTags } from "@/lib/tags";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +88,23 @@ function getResponsavelDisplayName(d: Demanda, usuarios: Usuario[]): string {
   );
 
   return usuario?.nomeFuncional || d.responsavel;
+}
+
+type CardUrgencia = "inativa" | "vencida" | "laranja" | "amarela" | "ok";
+
+function exactHoursUntilDeadline(d: Demanda): number | null {
+  const deadline = getDemandaDeadline(d);
+  if (!deadline) return null;
+  return (deadline.getTime() - Date.now()) / (1000 * 60 * 60);
+}
+
+function getCardUrgencia(d: Demanda): CardUrgencia {
+  if (!d.ativa) return "inativa";
+  if (isDemandaVencida(d)) return "vencida";
+  const h = exactHoursUntilDeadline(d);
+  if (h !== null && h < 12) return "laranja";
+  if (h !== null && h <= 24) return "amarela";
+  return "ok";
 }
 
 export default function DemandasPage() {
@@ -456,14 +473,32 @@ function DemandaCard({
   onReport: () => void;
   reporting: boolean;
 }) {
-  const vencida = d.ativa && isDemandaVencida(d);
+  const urgencia = getCardUrgencia(d);
+  const badgeClass =
+    urgencia === "laranja"
+      ? "bg-orange-600 text-white hover:bg-orange-600"
+      : urgencia === "amarela"
+        ? "bg-amber-600 text-white hover:bg-amber-600"
+        : urgencia === "ok"
+          ? "bg-green-700 text-white hover:bg-green-700"
+          : undefined;
+  const statusLabel =
+    urgencia === "inativa"
+      ? "Inativa"
+      : urgencia === "vencida"
+        ? "Vencida"
+        : "Ativa";
 
   return (
     <Card
       className={
-        !d.ativa
+        urgencia === "inativa"
           ? "border-l-4 border-l-destructive bg-red-50/80"
-          : vencida
+          : urgencia === "vencida"
+            ? "border-l-4 border-l-destructive bg-red-50/80"
+            : urgencia === "laranja"
+              ? "border-l-4 border-l-orange-600 bg-orange-50/80"
+              : urgencia === "amarela"
             ? "border-l-4 border-l-amber-700 bg-amber-50/90"
             : "border-l-4 border-l-green-700 bg-green-50/80"
       }
@@ -475,8 +510,11 @@ function DemandaCard({
               <CardTitle className="text-base uppercase tracking-[0.04em]">
                 {d.titulo}
               </CardTitle>
-              <Badge variant={d.ativa ? "default" : "secondary"}>
-                {!d.ativa ? "Inativa" : vencida ? "Vencida" : "Ativa"}
+              <Badge
+                variant={urgencia === "inativa" ? "secondary" : urgencia === "vencida" ? "destructive" : "default"}
+                className={badgeClass}
+              >
+                {statusLabel}
               </Badge>
             </div>
             <p className="text-sm font-medium text-muted-foreground mt-1">

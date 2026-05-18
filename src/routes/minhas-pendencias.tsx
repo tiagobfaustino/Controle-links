@@ -49,15 +49,22 @@ function formatPrazo(prazoStr: string): string {
 function hoursUntilDeadline(d: Demanda): number | null {
   const dl = getDemandaDeadline(d);
   if (!dl) return null;
-  return Math.round((dl.getTime() - Date.now()) / (1000 * 60 * 60));
+  return Math.max(0, Math.ceil((dl.getTime() - Date.now()) / (1000 * 60 * 60)));
 }
 
-type Urgencia = "vencida" | "urgente" | "ok";
+function exactHoursUntilDeadline(d: Demanda): number | null {
+  const dl = getDemandaDeadline(d);
+  if (!dl) return null;
+  return (dl.getTime() - Date.now()) / (1000 * 60 * 60);
+}
+
+type Urgencia = "vencida" | "laranja" | "amarela" | "ok";
 
 function getUrgencia(d: Demanda): Urgencia {
   if (isDemandaVencida(d)) return "vencida";
-  const h = hoursUntilDeadline(d);
-  if (h !== null && h <= 24) return "urgente";
+  const h = exactHoursUntilDeadline(d);
+  if (h !== null && h < 12) return "laranja";
+  if (h !== null && h <= 24) return "amarela";
   return "ok";
 }
 
@@ -136,8 +143,7 @@ export default function MinhasPendenciasPage() {
       .filter((d) => !cumpridosSet.has(d.id))
       .map((d) => ({ d, urgencia: getUrgencia(d) }))
       .sort((a, b) => {
-        // Vencidas no topo, depois urgentes, depois OK; dentro de cada grupo por prazo
-        const order = { vencida: 0, urgente: 1, ok: 2 } as const;
+        const order = { vencida: 0, laranja: 1, amarela: 2, ok: 3 } as const;
         if (order[a.urgencia] !== order[b.urgencia]) {
           return order[a.urgencia] - order[b.urgencia];
         }
@@ -244,7 +250,9 @@ function PendenciaCard({
   const borderClass =
     urgencia === "vencida"
       ? "border-l-destructive bg-red-50/50"
-      : urgencia === "urgente"
+      : urgencia === "laranja"
+        ? "border-l-orange-600 bg-orange-50/60"
+        : urgencia === "amarela"
         ? "border-l-amber-600 bg-amber-50/50"
         : "border-l-green-600 bg-green-50/30";
 
@@ -265,7 +273,12 @@ function PendenciaCard({
               <AlertTriangle className="size-3" />
               Vencida
             </Badge>
-          ) : urgencia === "urgente" ? (
+          ) : urgencia === "laranja" ? (
+            <Badge className="shrink-0 bg-orange-600 text-white hover:bg-orange-600">
+              <Clock className="size-3" />
+              {h}h restantes
+            </Badge>
+          ) : urgencia === "amarela" ? (
             <Badge className="shrink-0 bg-amber-600 text-white hover:bg-amber-600">
               <Clock className="size-3" />
               {h}h restantes
