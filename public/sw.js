@@ -1,4 +1,4 @@
-const CACHE_NAME = "controle-links-v1";
+const CACHE_NAME = "controle-links-v2";
 const APP_SHELL = [
   "/",
   "/dashboard",

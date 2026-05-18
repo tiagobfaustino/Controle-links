@@ -32,6 +32,7 @@ type Demanda = {
   horaLimite: string;
   responsavel: string;
   ativa: boolean;
+  observacao?: string;
 };
 
 type Cumprimento = {
@@ -83,8 +84,11 @@ function buildPendingMessage(
   const instrucao = demanda.linkForm
     ? `Link: ${demanda.linkForm}\n\nPor favor confirme o envio.`
     : "Esta demanda não possui link externo. Por favor, acesse o app e confirme ciência/cumprimento.";
+  const observacao = demanda.observacao?.trim()
+    ? `\n\nObservação: ${demanda.observacao.trim()}`
+    : "";
 
-  return `Olá ${nome}, lembrete: você ainda tem a demanda "${demanda.titulo}" pendente.\n\nPrazo: ${formatPrazo(demanda.prazo)} às ${demanda.horaLimite}\n${instrucao}`;
+  return `Olá ${nome}, lembrete: você ainda tem a demanda "${demanda.titulo}" pendente.\n\nPrazo: ${formatPrazo(demanda.prazo)} às ${demanda.horaLimite}${observacao}\n${instrucao}`;
 }
 
 function buildWaLink(pendente: Usuario, demanda: Demanda): string | null {
@@ -345,6 +349,16 @@ function DemandaLembreteCard({
               Prazo: {formatPrazo(demanda.prazo)} às {demanda.horaLimite} ·{" "}
               Resp.: <strong>{demanda.responsavel}</strong>
             </p>
+            {demanda.observacao?.trim() && (
+              <div className="mt-2 rounded-md border border-border bg-background px-3 py-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.08em] text-muted-foreground">
+                  Observação
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {demanda.observacao.trim()}
+                </p>
+              </div>
+            )}
             <div className="mt-2 flex items-center gap-2 flex-wrap">
               {vencida ? (
                 <Badge variant="destructive">Vencida</Badge>
