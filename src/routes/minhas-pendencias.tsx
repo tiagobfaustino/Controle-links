@@ -253,7 +253,7 @@ function PendenciaCard({
       : urgencia === "laranja"
         ? "border-l-orange-600 bg-orange-50/60"
         : urgencia === "amarela"
-        ? "border-l-amber-600 bg-amber-50/50"
+        ? "border-l-yellow-500 bg-yellow-50/60"
         : "border-l-green-600 bg-green-50/30";
 
   return (
@@ -279,7 +279,7 @@ function PendenciaCard({
               {h}h restantes
             </Badge>
           ) : urgencia === "amarela" ? (
-            <Badge className="shrink-0 bg-amber-600 text-white hover:bg-amber-600">
+            <Badge className="shrink-0 bg-yellow-400 text-foreground hover:bg-yellow-400">
               <Clock className="size-3" />
               {h}h restantes
             </Badge>
