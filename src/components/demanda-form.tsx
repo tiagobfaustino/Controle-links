@@ -35,6 +35,25 @@ function RequiredMark() {
   );
 }
 
+function describeSaveError(err: unknown): string {
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "data" in err &&
+    typeof (err as { data?: unknown }).data === "object" &&
+    (err as { data?: unknown }).data !== null
+  ) {
+    const data = (err as { data: { data?: Record<string, { message?: string }> } }).data;
+    const fieldErrors = Object.entries(data.data ?? {})
+      .map(([field, value]) => `${field}: ${value.message ?? "valor inválido"}`)
+      .join("; ");
+
+    if (fieldErrors) return fieldErrors;
+  }
+
+  return err instanceof Error ? err.message : "Erro ao salvar";
+}
+
 export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -158,8 +177,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
       }
       navigate("/demandas");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro ao salvar";
-      toast.error(message);
+      toast.error(describeSaveError(err));
     } finally {
       setLoading(false);
     }
