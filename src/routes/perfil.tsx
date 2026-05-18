@@ -110,7 +110,7 @@ export default function PerfilPage() {
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="border-l-4 border-accent bg-card px-4 py-3 shadow-sm">
-        <p className="tactical-heading">Conta do usuário</p>
+        <p className="tactical-heading">Conta do aluno</p>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-black uppercase tracking-[0.06em]">
           <UserRound className="size-6 text-accent" />
           Meu perfil

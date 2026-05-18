@@ -258,7 +258,7 @@ export default function DemandasPage() {
           ["Responsavel", responsavel || d.responsavel],
           ["Prazo", `${formatDate(d.prazo)} as ${d.horaLimite}`],
           ["Status", status],
-          ["Total de usuarios", String(total)],
+          ["Total de alunos", String(total)],
           ["Cumpridos", `${cumpridos.length} (${percentual}%)`],
           ["Pendentes", `${pendentes.length} (${percentualPendente}%)`],
         ],
@@ -277,7 +277,7 @@ export default function DemandasPage() {
                 u.nomeFuncional || u.name,
                 u.celular || "-",
               ])
-            : [["-", "Nenhum usuario pendente", "-"]],
+            : [["-", "Nenhum aluno pendente", "-"]],
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [171, 35, 40], textColor: [255, 255, 255] },
         columnStyles: {
@@ -299,7 +299,7 @@ export default function DemandasPage() {
                 u.numeroCurso ? String(u.numeroCurso) : "-",
                 u.nomeFuncional || u.name,
               ])
-            : [["-", "Nenhum usuario cumpriu ainda"]],
+            : [["-", "Nenhum aluno cumpriu ainda"]],
         styles: { fontSize: 8, cellPadding: 2 },
         headStyles: { fillColor: [46, 125, 50], textColor: [255, 255, 255] },
         columnStyles: {

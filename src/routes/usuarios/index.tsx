@@ -127,7 +127,7 @@ export default function UsuariosPage() {
     try {
       const updated = await pb.collection("users").update<Usuario>(editTarget.id, payload);
       setUsuarios((prev) => prev.map((u) => (u.id === editTarget.id ? { ...u, ...updated } : u)));
-      toast.success("Usuário atualizado");
+      toast.success("Aluno atualizado");
       setEditTarget(null);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Erro ao salvar";
@@ -146,9 +146,9 @@ export default function UsuariosPage() {
       setUsuarios((prev) =>
         prev.map((x) => (x.id === u.id ? { ...x, disabled: !u.disabled } : x))
       );
-      toast.success(u.disabled ? "Usuário ativado" : "Usuário desativado");
+      toast.success(u.disabled ? "Aluno ativado" : "Aluno desativado");
     } catch {
-      toast.error("Erro ao alterar status do usuário");
+      toast.error("Erro ao alterar status do aluno");
     }
   }
 
@@ -184,12 +184,12 @@ export default function UsuariosPage() {
       <div className="flex items-center justify-between gap-4 border-l-4 border-accent bg-card px-4 py-3 shadow-sm">
         <div>
           <p className="tactical-heading">Efetivo autorizado</p>
-          <h1 className="mt-1 text-2xl font-black uppercase tracking-[0.06em]">Usuários</h1>
+          <h1 className="mt-1 text-2xl font-black uppercase tracking-[0.06em]">Alunos</h1>
         </div>
         <Button asChild>
           <Link to="/usuarios/novo">
             <Plus className="h-4 w-4 mr-2" />
-            Novo Usuário
+            Novo Aluno
           </Link>
         </Button>
       </div>
@@ -299,7 +299,7 @@ export default function UsuariosPage() {
       <Dialog open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="uppercase tracking-[0.08em]">Editar Usuário</DialogTitle>
+            <DialogTitle className="uppercase tracking-[0.08em]">Editar Aluno</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -391,7 +391,7 @@ export default function UsuariosPage() {
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             A senha de <strong>{resetTarget?.name}</strong> será redefinida para{" "}
-            <strong className="font-mono">tpcefs2026</strong>. O usuário será obrigado a
+            <strong className="font-mono">tpcefs2026</strong>. O aluno será obrigado a
             escolher uma nova senha no próximo acesso.
           </p>
           <div className="flex gap-3 pt-2">

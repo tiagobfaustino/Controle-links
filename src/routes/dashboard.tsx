@@ -719,7 +719,7 @@ export default function DashboardPage() {
               <CardHeader className="pb-2">
                 <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <Users className="size-4" />
-                  Usuários
+                  Alunos
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -1010,7 +1010,7 @@ function DashboardToolbar({
       )}
 
       <div className="text-xs font-medium text-muted-foreground">
-        Mostrando {visibleUsuarios}/{totalUsuariosCount} usuários ·{" "}
+        Mostrando {visibleUsuarios}/{totalUsuariosCount} alunos ·{" "}
         {visibleDemandas}/{totalDemandasCount} demandas
       </div>
     </div>
@@ -1119,7 +1119,7 @@ function CrossTable({
                 className="sticky left-0 z-20 w-max bg-primary px-3 py-3 text-left font-black uppercase tracking-[0.06em] text-primary-foreground border-b border-r border-primary-foreground/20 whitespace-nowrap"
                 scope="col"
               >
-                Usuário
+                Aluno
               </th>
 
               {demandas.map((d) => (
@@ -1484,14 +1484,14 @@ function CrossTable({
               {bulkConfirm.action === "mark" ? (
                 <>
                   Vamos marcar <strong>{bulkConfirm.userIds.length}</strong>{" "}
-                  usuário(s) como cumpridos na demanda{" "}
+                  aluno(s) como cumpridos na demanda{" "}
                   <strong>{bulkConfirm.demanda.titulo}</strong>. Essa ação fica
                   registrada no histórico.
                 </>
               ) : (
                 <>
                   Vamos remover o cumprimento de{" "}
-                  <strong>{bulkConfirm.userIds.length}</strong> usuário(s) na
+                  <strong>{bulkConfirm.userIds.length}</strong> aluno(s) na
                   demanda <strong>{bulkConfirm.demanda.titulo}</strong>. Essa
                   ação fica registrada no histórico.
                 </>

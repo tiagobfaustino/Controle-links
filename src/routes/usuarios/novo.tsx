@@ -56,10 +56,10 @@ export default function NovoUsuarioPage() {
       if (form.numPM) payload.numPM = Number(form.numPM);
 
       await pb.collection("users").create(payload);
-      toast.success("Usuário criado com senha provisória tpcefs2026");
+      toast.success("Aluno criado com senha provisória tpcefs2026");
       navigate("/usuarios");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Erro ao criar usuário";
+      const message = err instanceof Error ? err.message : "Erro ao criar aluno";
       toast.error(message);
     } finally {
       setLoading(false);
@@ -71,9 +71,9 @@ export default function NovoUsuarioPage() {
       <Card className="border-2 border-primary/70">
         <CardHeader className="border-b border-primary/40 bg-accent text-accent-foreground">
           <p className="text-xs font-black uppercase tracking-[0.16em] text-primary/75">Cadastro de efetivo</p>
-          <CardTitle className="uppercase tracking-[0.08em] text-primary">Novo Usuário</CardTitle>
+          <CardTitle className="uppercase tracking-[0.08em] text-primary">Novo Aluno</CardTitle>
           <p className="text-sm font-medium text-muted-foreground">
-            A senha provisória será <strong>tpcefs2026</strong>. O usuário deverá alterá-la no primeiro acesso.
+            A senha provisória será <strong>tpcefs2026</strong>. O aluno deverá alterá-la no primeiro acesso.
           </p>
         </CardHeader>
         <CardContent className="bg-white pt-1">
@@ -161,13 +161,13 @@ export default function NovoUsuarioPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Gestores podem incluir e gerenciar demandas e confirmar cumprimento. Admins adicionalmente gerenciam usuários.
+                Gestores podem incluir e gerenciar demandas e confirmar cumprimento. Admins adicionalmente gerenciam alunos.
               </p>
             </div>
 
             <div className="flex gap-3 pt-2">
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Criando..." : "Criar Usuário"}
+                {loading ? "Criando..." : "Criar Aluno"}
               </Button>
               <Button type="button" variant="outline" onClick={() => navigate(-1)}>
                 Cancelar
