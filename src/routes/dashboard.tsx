@@ -1175,13 +1175,13 @@ function CrossTable({
                         href={d.linkForm}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs font-bold text-accent hover:underline"
+                        className="flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 hover:underline"
                         title="Abrir formulário"
                       >
                         Form <ExternalLink className="size-2.5" />
                       </a>
                     ) : (
-                      <span className="text-xs font-bold text-primary-foreground/60">
+                      <span className="rounded-sm bg-accent px-1.5 py-0.5 text-xs font-black uppercase tracking-[0.04em] text-accent-foreground">
                         Tomou ciência?
                       </span>
                     )}
