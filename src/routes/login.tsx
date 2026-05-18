@@ -51,7 +51,7 @@ export default function LoginPage() {
           alt=""
           className="mb-4 size-16 rounded-md border-2 border-primary object-cover shadow-md"
         />
-        <p className="tactical-heading">CEFS 2026 - Turma P</p>
+        <p className="tactical-heading">CEFS 2026 - T. P</p>
         <h1 className="mt-2 text-3xl font-black uppercase tracking-[0.08em] text-foreground">
           Controle de Links
         </h1>

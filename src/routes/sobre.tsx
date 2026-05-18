@@ -14,7 +14,7 @@ export default function SobrePage() {
             alt="Controle de Links"
             className="size-24 rounded-lg border border-primary/30 object-cover shadow-sm"
           />
-          <p className="tactical-heading mt-5">CEFS 2026 - Turma P</p>
+          <p className="tactical-heading mt-5">CEFS 2026 - T. P</p>
           <h1 className="mt-2 text-3xl font-black uppercase tracking-[0.08em] text-foreground">
             Controle de Links
           </h1>

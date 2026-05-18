@@ -20,20 +20,20 @@ Este PRD endereça essas três fricções, alinha o documento com o código real
 
 ## 2. Estado atual (o que JÁ existe)
 
-| Área | Implementado |
-|------|--------------|
-| Stack | Vite + React 19 + React Router 6 + PocketBase 0.38 + Tailwind 4 + shadcn |
-| Auth | Login email/senha, troca obrigatória no 1º acesso, sessão via cookie PB |
-| Roles | `ADMIN`, `GESTOR` (o `PARTICIPANTE` previsto no PRD original foi descartado — todo usuário com login é GESTOR de si mesmo e das demandas das quais é responsável) |
-| Dashboard | Tabela cruzada com sticky column, % por usuário e por demanda, destaque da própria linha, WhatsApp por usuário e por responsável |
-| Visão pública | `GET /api/public-dashboard` ([pb_hooks/public-dashboard.pb.js](pb_hooks/public-dashboard.pb.js)) — leitura sem login, polling de 30s |
-| Demandas | CRUD completo, toggle ativa/inativa, exclusão com cascade em `cumprimento`, relatório PDF |
-| Usuários | CRUD individual, reset de senha pelo admin, edição inline |
-| Auditoria | Collection `cumprimento_log` append-only, hook PB grava actor + alvo a cada create/delete em `cumprimento`, rota `/demandas/:id/historico` (ADMIN) |
-| Recuperação de senha | Self-service via e-mail (`/recuperar-senha` + `/recuperar-senha/confirmar/:token`), SMTP Gmail |
-| Lembretes | Rota `/lembretes` agrega pendentes por responsável com links wa.me prontos (sem cron — sob demanda) |
-| PWA | Manifest + service worker básico + botão de instalação |
-| Realtime (autenticado) | Subscription PocketBase em `cumprimento` |
+| Área                   | Implementado                                                                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Stack                  | Vite + React 19 + React Router 6 + PocketBase 0.38 + Tailwind 4 + shadcn                                                                                          |
+| Auth                   | Login email/senha, troca obrigatória no 1º acesso, sessão via cookie PB                                                                                           |
+| Roles                  | `ADMIN`, `GESTOR` (o `PARTICIPANTE` previsto no PRD original foi descartado — todo usuário com login é GESTOR de si mesmo e das demandas das quais é responsável) |
+| Dashboard              | Tabela cruzada com sticky column, % por usuário e por demanda, destaque da própria linha, WhatsApp por usuário e por responsável                                  |
+| Visão pública          | `GET /api/public-dashboard` ([pb_hooks/public-dashboard.pb.js](pb_hooks/public-dashboard.pb.js)) — leitura sem login, polling de 30s                              |
+| Demandas               | CRUD completo, toggle ativa/inativa, exclusão com cascade em `cumprimento`, relatório PDF                                                                         |
+| Usuários               | CRUD individual, reset de senha pelo admin, edição inline                                                                                                         |
+| Auditoria              | Collection `cumprimento_log` append-only, hook PB grava actor + alvo a cada create/delete em `cumprimento`, rota `/demandas/:id/historico` (ADMIN)                |
+| Recuperação de senha   | Self-service via e-mail (`/recuperar-senha` + `/recuperar-senha/confirmar/:token`), SMTP Gmail                                                                    |
+| Lembretes              | Rota `/lembretes` agrega pendentes por responsável com links wa.me prontos (sem cron — sob demanda)                                                               |
+| PWA                    | Manifest + service worker básico + botão de instalação                                                                                                            |
+| Realtime (autenticado) | Subscription PocketBase em `cumprimento`                                                                                                                          |
 
 ### Modelo de dados atual
 
@@ -49,20 +49,24 @@ cumprimento   id, user (FK), demanda (FK), dataRegistro
 ## 3. Roadmap — 3 fases
 
 ### Fase 1 — Reduzir trabalho manual ✅ concluída
+
 1. F1.1 — Reset de senha self-service ✅
 2. F1.2 — Audit log de cumprimento ✅
 3. F1.3 — Erros visíveis no dashboard ✅
 4. F1.4 — Lembretes wa.me agregados (versão sob demanda, sem cron) ✅
 
 ### Fase 2 — Filtros e ações em massa
+
 5. F2.3 — Filtros e ordenação no dashboard
 6. F2.4 — Bulk actions (marcar todos / nudge em massa)
 
 > Os itens F2.1 (Google Forms webhook) e F2.2 (importação CSV de usuários) foram removidos:
+>
 > - **F2.1:** os formulários vêm da coordenação do curso, não dos gestores do app — não controlamos o lado do Forms para colar o Apps Script.
 > - **F2.2:** cadastro em lote não é necessidade recorrente — o cadastro individual atual cobre o ritmo da operação.
 
 ### Fase 3 — Escala e UX
+
 7. F3.1 — Rota "Minhas pendências" (mobile-first)
 8. F3.2 — Timeline/calendário de demandas
 9. F3.3 — Multi-turma
@@ -70,6 +74,7 @@ cumprimento   id, user (FK), demanda (FK), dataRegistro
 11. F3.5 — Tags/categorias em demandas
 
 ### Transversal — Dívida técnica
+
 - Atualizar [README.md](README.md) (ainda menciona Next.js)
 - Remover boilerplate Next em `public/` (`next.svg`, `vercel.svg`, `file.svg`, `globe.svg`, `window.svg`)
 - Hardening de cookie/CSP
@@ -87,6 +92,7 @@ cumprimento   id, user (FK), demanda (FK), dataRegistro
 **Solução:** Link "Esqueci minha senha" na tela de login → tela de pedido de reset → envia e-mail com token via PocketBase nativo (`pb.collection('users').requestPasswordReset(email)`) → tela de confirmação com nova senha.
 
 **Escopo:**
+
 - Nova rota `/recuperar-senha` (pedir e-mail)
 - Nova rota `/recuperar-senha/confirmar` (consumir token, definir nova senha)
 - Configurar SMTP no PocketBase
@@ -95,6 +101,7 @@ cumprimento   id, user (FK), demanda (FK), dataRegistro
 **Fora de escopo:** SMS, magic link, recuperação por celular.
 
 **Critérios de aceitação:**
+
 - [ ] Link "Esqueci minha senha" visível em [src/routes/login.tsx](src/routes/login.tsx)
 - [ ] E-mail chega em até 2 min com link de reset
 - [ ] Token expira em 1h
@@ -112,6 +119,7 @@ cumprimento   id, user (FK), demanda (FK), dataRegistro
 **Solução:** Collection append-only `cumprimento_log` registra toda ação (criar/deletar) com autor, alvo e timestamp.
 
 **Modelo:**
+
 ```
 cumprimento_log
   id, action ('create' | 'delete'), demanda (FK), targetUser (FK),
@@ -119,12 +127,14 @@ cumprimento_log
 ```
 
 **Escopo:**
+
 - Migration para a collection
 - Hook PB `onRecordAfterCreateRequest("cumprimento")` e `onRecordAfterDeleteRequest("cumprimento")` populam o log
 - Tela `/demandas/:id/historico` (somente ADMIN) lista entradas
 - Tooltip no dashboard mostrando "marcado por X em DD/MM HH:mm" no hover (autenticado)
 
 **Critérios de aceitação:**
+
 - [ ] Criar/excluir cumprimento gera entrada no log automaticamente
 - [ ] Log é imutável (sem update/delete via API pública)
 - [ ] ADMIN vê histórico completo de uma demanda
@@ -141,6 +151,7 @@ cumprimento_log
 **Solução:** Estado de erro explícito + banner "Falha ao carregar — tentar novamente".
 
 **Escopo:**
+
 - Estado `error: Error | null` em `DashboardPage`
 - Banner sticky no topo da tabela quando `error != null`
 - Botão "Tentar novamente" dispara `fetchData()`
@@ -148,6 +159,7 @@ cumprimento_log
 - Mesma abordagem em [src/routes/demandas/index.tsx](src/routes/demandas/index.tsx) e [src/routes/usuarios/index.tsx](src/routes/usuarios/index.tsx)
 
 **Critérios de aceitação:**
+
 - [ ] Desligar a rede e recarregar a página mostra banner de erro
 - [ ] Religar a rede + clicar "Tentar novamente" restaura os dados
 - [ ] Erros 401/403 redirecionam para `/login` em vez de mostrar banner
@@ -163,10 +175,12 @@ cumprimento_log
 **Solução:** Job PocketBase (`cronAdd`) que roda a cada 30 min e dispara mensagem para pendentes em janelas configuráveis (T-24h, T-3h, T-0).
 
 **Canais:**
+
 - **WhatsApp** via API Business (preferencial) ou link `wa.me` agregado (fallback manual)
 - **E-mail** como fallback
 
 **Modelo (configuração):**
+
 ```
 notification_config
   id, demanda (FK opcional, null = global),
@@ -178,6 +192,7 @@ notification_log
 ```
 
 **Escopo:**
+
 - Migration das duas collections
 - `pb_hooks/notify-cron.pb.js` com `cronAdd("notify", "*/30 * * * *", ...)`
 - Tela `/demandas/:id/notificacoes` para configurar janelas e templates
@@ -186,6 +201,7 @@ notification_log
 **Fora de escopo (v1):** SMS, retry automático, throttling por usuário entre demandas.
 
 **Critérios de aceitação:**
+
 - [ ] Demanda com prazo amanhã 18h → mensagem dispara hoje entre 17:30-18:00
 - [ ] Cumprimento marcado entre disparos cancela o envio das janelas restantes
 - [ ] `notification_log` registra tentativa e status (sucesso/erro)
@@ -201,6 +217,7 @@ notification_log
 **Problema:** Tabela hoje tem ordenação fixa `numeroCurso, name` e mostra tudo. Difícil focar em quem está pendente.
 
 **Solução:** Toolbar acima da tabela com:
+
 - Toggle "Apenas pendentes" (oculta usuários 100%)
 - Toggle "Apenas vencidas" (filtra colunas de demanda)
 - Select de ordenação: `numeroCurso ↑`, `% cumprimento ↓`, `nome A-Z`
@@ -210,6 +227,7 @@ notification_log
 **Estado persistido em URL** (`?sort=pct&pending=1`) para compartilhamento.
 
 **Critérios de aceitação:**
+
 - [ ] Ativar "Apenas pendentes" e recarregar → toggle continua ativo (via URL)
 - [ ] Ordenar por % decrescente coloca quem tem 0% no topo
 - [ ] Busca filtra por `name` e `nomeFuncional`
@@ -223,6 +241,7 @@ notification_log
 **Problema:** Para 28 alunos, marcar 1 a 1 ou abrir 28 WhatsApps é trabalhoso.
 
 **Solução:** Menu por coluna de demanda (responsável):
+
 - "Marcar todos como cumpridos"
 - "Desmarcar todos"
 - "Copiar lista de pendentes" (clipboard)
@@ -231,6 +250,7 @@ notification_log
 **Permissão:** ADMIN sempre, GESTOR apenas para demandas onde é `responsavel`.
 
 **Critérios de aceitação:**
+
 - [ ] "Marcar todos" cria N `cumprimentos` em uma transação
 - [ ] Confirmação obrigatória antes de marcar (modal)
 - [ ] GESTOR não vê o menu em demandas de terceiros
@@ -247,6 +267,7 @@ notification_log
 **Solução:** Rota `/minhas-pendencias` mobile-first, lista vertical de cards de demandas pendentes ordenadas por prazo, cada uma com botão "Abrir Form" e "Marcar cumprida".
 
 **Critérios de aceitação:**
+
 - [ ] Acessível pelo menu do navbar
 - [ ] Mostra apenas demandas ativas onde `cumprimento` não existe para o usuário logado
 - [ ] Cor por urgência: vermelho (vencida), amarelo (≤24h), verde (>24h)
@@ -268,7 +289,7 @@ notification_log
 
 ### F3.3 — Multi-turma
 
-**Problema:** Strings "CEFS 2026 - Turma P" hard-coded em [navbar.tsx:106](src/components/navbar.tsx#L106) e [login.tsx:54](src/routes/login.tsx#L54).
+**Problema:** Strings "CEFS 2026 - T. P" hard-coded em [navbar.tsx:106](src/components/navbar.tsx#L106) e [login.tsx:54](src/routes/login.tsx#L54).
 
 **Solução:** Collection `turmas` (id, nome, sigla, ativa). `users` ganha FK `turma`. ADMIN troca de contexto via dropdown no navbar.
 
@@ -281,6 +302,7 @@ notification_log
 **Problema:** PWA já instala, mas não notifica nada.
 
 **Solução:** Solicitar permissão de notificação após login. Backend envia push via VAPID quando:
+
 - Demanda nova é criada para o usuário (todas as demandas ativas afetam todos)
 - T-1h do prazo de uma demanda pendente
 
@@ -300,15 +322,15 @@ notification_log
 
 ## 5. Dívida técnica (paralela ao roadmap)
 
-| Item | Onde | Esforço |
-|------|------|---------|
-| Atualizar README (ainda diz Next.js) | [README.md](README.md) | 15min |
-| Remover SVGs Next | [public/](public/) | 5min |
-| Atualizar [PRD.md](PRD.md) ou marcá-lo como obsoleto (referenciando este) | raiz | 10min |
-| Padronizar tratamento de erro (eliminar `catch {}`) | [dashboard.tsx:239](src/routes/dashboard.tsx#L239), demais rotas | 1h |
-| CSP estrito + revisar `httpOnly:false` no cookie | [auth.tsx:79](src/contexts/auth.tsx#L79) | 2h (depende de hosting) |
-| Substituir polling público (30s) por SSE | [dashboard.tsx:254](src/routes/dashboard.tsx#L254) + hook PB | 2h |
-| Centralizar `pb.authStore.loadFromCookie(document.cookie)` (repetido em cada rota) | criar helper em [src/lib/pocketbase.ts](src/lib/pocketbase.ts) | 30min |
+| Item                                                                               | Onde                                                             | Esforço                 |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------- | ----------------------- |
+| Atualizar README (ainda diz Next.js)                                               | [README.md](README.md)                                           | 15min                   |
+| Remover SVGs Next                                                                  | [public/](public/)                                               | 5min                    |
+| Atualizar [PRD.md](PRD.md) ou marcá-lo como obsoleto (referenciando este)          | raiz                                                             | 10min                   |
+| Padronizar tratamento de erro (eliminar `catch {}`)                                | [dashboard.tsx:239](src/routes/dashboard.tsx#L239), demais rotas | 1h                      |
+| CSP estrito + revisar `httpOnly:false` no cookie                                   | [auth.tsx:79](src/contexts/auth.tsx#L79)                         | 2h (depende de hosting) |
+| Substituir polling público (30s) por SSE                                           | [dashboard.tsx:254](src/routes/dashboard.tsx#L254) + hook PB     | 2h                      |
+| Centralizar `pb.authStore.loadFromCookie(document.cookie)` (repetido em cada rota) | criar helper em [src/lib/pocketbase.ts](src/lib/pocketbase.ts)   | 30min                   |
 
 ---
 
@@ -329,13 +351,13 @@ demandas        + tags (json)                         (F3.5)
 
 ## 7. Métricas de sucesso (3 meses pós-deploy)
 
-| Métrica | Hoje (estimado) | Meta |
-|---------|-----------------|------|
-| Tickets de "esqueci minha senha" para o admin / semana | ~3 | 0 |
-| Cliques no botão WhatsApp na rota `/lembretes` / semana | 0 (rota nova) | medir baseline e crescer |
-| % de demandas com 100% de cumprimento até o prazo | ? (medir) | +20pp |
-| DAU mobile / DAU total | ? (medir) | ≥60% |
-| Cliques em "Marcar todos" (após F2.4) / semana | 0 | medir adoção |
+| Métrica                                                 | Hoje (estimado) | Meta                     |
+| ------------------------------------------------------- | --------------- | ------------------------ |
+| Tickets de "esqueci minha senha" para o admin / semana  | ~3              | 0                        |
+| Cliques no botão WhatsApp na rota `/lembretes` / semana | 0 (rota nova)   | medir baseline e crescer |
+| % de demandas com 100% de cumprimento até o prazo       | ? (medir)       | +20pp                    |
+| DAU mobile / DAU total                                  | ? (medir)       | ≥60%                     |
+| Cliques em "Marcar todos" (após F2.4) / semana          | 0               | medir adoção             |
 
 ---
 
@@ -354,12 +376,12 @@ demandas        + tags (json)                         (F3.5)
 
 ## 9. Estimativa total
 
-| Fase | Esforço | Status |
-|------|---------|--------|
-| Fase 1 — Reduzir trabalho manual | ~12h | ✅ concluída |
-| Fase 2 — Filtros e ações em massa | ~5h (F2.3: 3h + F2.4: 2h) | a fazer |
-| Fase 3 — Escala e UX | ~19h | a fazer |
-| Dívida técnica | ~6h | parcialmente endereçada |
-| **Total restante** | **~30h** | |
+| Fase                              | Esforço                   | Status                  |
+| --------------------------------- | ------------------------- | ----------------------- |
+| Fase 1 — Reduzir trabalho manual  | ~12h                      | ✅ concluída            |
+| Fase 2 — Filtros e ações em massa | ~5h (F2.3: 3h + F2.4: 2h) | a fazer                 |
+| Fase 3 — Escala e UX              | ~19h                      | a fazer                 |
+| Dívida técnica                    | ~6h                       | parcialmente endereçada |
+| **Total restante**                | **~30h**                  |                         |
 
 Fase 2 deve ser executada na ordem listada: **F2.3 (filtros) antes de F2.4 (bulk actions)** — a barra de filtros é onde os toggles "marcar todos" naturalmente se encaixam, e implementar bulk sem filtros gera UX confusa (qual conjunto está sendo marcado?).

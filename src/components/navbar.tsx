@@ -140,7 +140,7 @@ export function Navbar() {
               Controle de Links
             </span>
             <span className="block text-sm uppercase tracking-[0.08em]">
-              {selectedTurma?.nome ?? "CEFS 2026 - Turma P"}
+              {selectedTurma?.nome ?? "CEFS 2026 - T. P"}
             </span>
           </span>
         </Link>
@@ -326,7 +326,7 @@ export function Navbar() {
           )}
           <div className="mt-3 border-t border-primary-foreground/15 pt-3">
             {user && <NotificationsToggle />}
-          <PwaInstall />
+            <PwaInstall />
           </div>
         </div>
       )}
