@@ -478,7 +478,7 @@ function DemandaCard({
   const urgencia = getCardUrgencia(d);
   const badgeClass =
     urgencia === "laranja"
-      ? "bg-orange-600 text-white hover:bg-orange-600"
+      ? "bg-orange-300 text-orange-950 hover:bg-orange-300"
       : urgencia === "amarela"
         ? "bg-yellow-400 text-foreground hover:bg-yellow-400"
         : urgencia === "ok"
@@ -499,7 +499,7 @@ function DemandaCard({
           : urgencia === "vencida"
             ? "border-l-4 border-l-destructive bg-red-50/80"
             : urgencia === "laranja"
-              ? "border-l-4 border-l-orange-600 bg-orange-50/80"
+              ? "border-l-4 border-l-orange-400 bg-orange-50/80"
               : urgencia === "amarela"
                 ? "border-l-4 border-l-yellow-500 bg-yellow-50/80"
             : "border-l-4 border-l-green-700 bg-green-50/80"

@@ -251,7 +251,7 @@ function PendenciaCard({
     urgencia === "vencida"
       ? "border-l-destructive bg-red-50/50"
       : urgencia === "laranja"
-        ? "border-l-orange-600 bg-orange-50/60"
+        ? "border-l-orange-400 bg-orange-50/60"
         : urgencia === "amarela"
         ? "border-l-yellow-500 bg-yellow-50/60"
         : "border-l-green-600 bg-green-50/30";
@@ -274,7 +274,7 @@ function PendenciaCard({
               Vencida
             </Badge>
           ) : urgencia === "laranja" ? (
-            <Badge className="shrink-0 bg-orange-600 text-white hover:bg-orange-600">
+            <Badge className="shrink-0 bg-orange-300 text-orange-950 hover:bg-orange-300">
               <Clock className="size-3" />
               {h}h restantes
             </Badge>
