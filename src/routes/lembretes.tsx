@@ -12,9 +12,21 @@ import { buildTurmaFilter, isTurmaSchemaError } from "@/lib/turma-filter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ErrorBanner, describeError } from "@/components/error-banner";
 import { cn } from "@/lib/utils";
-import { MessageCircle, ClipboardList, CheckCircle2, Copy } from "lucide-react";
+import {
+  MessageCircle,
+  ClipboardList,
+  CheckCircle2,
+  Copy,
+  Send,
+} from "lucide-react";
 import { toast } from "sonner";
 
 type Usuario = {
@@ -104,6 +116,12 @@ type DemandaComPendentes = {
   horasAteVencimento: number | null;
 };
 
+type WhatsAppConfirm = {
+  item: DemandaComPendentes;
+  validLinks: Array<{ user: Usuario; link: string }>;
+  missingPhone: Usuario[];
+};
+
 export default function LembretesPage() {
   const { user } = useAuth();
   const { selectedTurmaId } = useTurma();
@@ -116,6 +134,9 @@ export default function LembretesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<"mine" | "all">(isAdmin ? "all" : "mine");
+  const [whatsAppConfirm, setWhatsAppConfirm] =
+    useState<WhatsAppConfirm | null>(null);
+  const [openingWhatsApp, setOpeningWhatsApp] = useState(false);
 
   const fetchAll = useCallback(async () => {
     const pb = getPb();
@@ -229,6 +250,44 @@ export default function LembretesPage() {
     }
   }
 
+  function requestSendAll(item: DemandaComPendentes) {
+    const validLinks: WhatsAppConfirm["validLinks"] = [];
+    const missingPhone: Usuario[] = [];
+
+    for (const p of item.pendentes) {
+      const link = buildWaLink(p, item.demanda);
+      if (link) {
+        validLinks.push({ user: p, link });
+      } else {
+        missingPhone.push(p);
+      }
+    }
+
+    setWhatsAppConfirm({ item, validLinks, missingPhone });
+  }
+
+  function openAllWhatsAppLinks() {
+    if (!whatsAppConfirm || openingWhatsApp) return;
+
+    const { validLinks } = whatsAppConfirm;
+    if (validLinks.length === 0) {
+      toast.error("Nenhum pendente possui celular cadastrado");
+      return;
+    }
+
+    setOpeningWhatsApp(true);
+    validLinks.forEach(({ link }, index) => {
+      window.setTimeout(() => {
+        window.open(link, "_blank", "noopener,noreferrer");
+        if (index === validLinks.length - 1) {
+          setOpeningWhatsApp(false);
+          setWhatsAppConfirm(null);
+          toast.success(`${validLinks.length} conversa(s) abertas`);
+        }
+      }, index * 900);
+    });
+  }
+
   const totalPendentes = items.reduce((acc, x) => acc + x.pendentes.length, 0);
 
   return (
@@ -305,10 +364,66 @@ export default function LembretesPage() {
               key={item.demanda.id}
               item={item}
               onCopyAll={() => copyAllLinks(item)}
+              onSendAll={() => requestSendAll(item)}
             />
           ))}
         </div>
       )}
+
+      <Dialog
+        open={!!whatsAppConfirm}
+        onOpenChange={(open) =>
+          !open && !openingWhatsApp && setWhatsAppConfirm(null)
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="uppercase tracking-[0.08em]">
+              Enviar WhatsApp em massa
+            </DialogTitle>
+          </DialogHeader>
+          {whatsAppConfirm && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Serão abertas{" "}
+                <strong>{whatsAppConfirm.validLinks.length}</strong>{" "}
+                conversa(s) no WhatsApp para pendentes da demanda{" "}
+                <strong>{whatsAppConfirm.item.demanda.titulo}</strong>.
+              </p>
+              {whatsAppConfirm.missingPhone.length > 0 && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                  {whatsAppConfirm.missingPhone.length} pendente(s) sem celular
+                  cadastrado não serão incluídos.
+                </div>
+              )}
+              <p className="text-xs font-medium text-muted-foreground">
+                O navegador pode pedir permissão para abrir várias abas. No
+                WhatsApp Web, revise e envie cada mensagem manualmente.
+              </p>
+              <div className="flex gap-3 pt-2">
+                <Button
+                  onClick={openAllWhatsAppLinks}
+                  disabled={
+                    openingWhatsApp || whatsAppConfirm.validLinks.length === 0
+                  }
+                  className="flex-1"
+                >
+                  <Send className="size-4" />
+                  {openingWhatsApp ? "Abrindo..." : "Abrir conversas"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setWhatsAppConfirm(null)}
+                  disabled={openingWhatsApp}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -316,9 +431,11 @@ export default function LembretesPage() {
 function DemandaLembreteCard({
   item,
   onCopyAll,
+  onSendAll,
 }: {
   item: DemandaComPendentes;
   onCopyAll: () => void;
+  onSendAll: () => void;
 }) {
   const { demanda, pendentes, total, horasAteVencimento } = item;
   const vencida = isDemandaVencida(demanda);
@@ -378,15 +495,26 @@ function DemandaLembreteCard({
               </Badge>
             </div>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onCopyAll}
-            title="Copiar todos os links para o clipboard"
-          >
-            <Copy className="size-3.5" />
-            Copiar todos
-          </Button>
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={onSendAll}
+              title="Abrir conversas do WhatsApp para todos os pendentes com celular"
+            >
+              <Send className="size-3.5" />
+              Enviar pendentes
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onCopyAll}
+              title="Copiar todos os links para o clipboard"
+            >
+              <Copy className="size-3.5" />
+              Copiar todos
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">

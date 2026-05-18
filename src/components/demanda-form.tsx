@@ -53,7 +53,27 @@ function describeSaveError(err: unknown): string {
     if (fieldErrors) return fieldErrors;
   }
 
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "message" in err &&
+    typeof (err as { message?: unknown }).message === "string" &&
+    (err as { message: string }).message !== "Something went wrong."
+  ) {
+    return (err as { message: string }).message;
+  }
+
   return err instanceof Error ? err.message : "Erro ao salvar";
+}
+
+function isValidHttpUrl(value: string): boolean {
+  if (!value.trim()) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
@@ -149,6 +169,12 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!isValidHttpUrl(form.linkForm)) {
+      toast.error("Informe um link válido começando com http:// ou https://.");
+      return;
+    }
+
     setLoading(true);
 
     const pb = getPb();
@@ -160,7 +186,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
 
     const payload = {
       titulo: toUpperPtBr(form.titulo.trim()),
-      linkForm: form.linkForm.trim(),
+      linkForm: form.linkForm.trim() || null,
       prazo: prazoFormatted,
       horaLimite: form.horaLimite,
       responsavel: toUpperPtBr(responsavel),
