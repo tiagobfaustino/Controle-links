@@ -206,7 +206,7 @@ export function Navbar() {
                     <span className="flex size-6 items-center justify-center rounded-sm bg-accent text-xs font-black text-accent-foreground">
                       {initials}
                     </span>
-                    <span className="max-w-[140px] truncate">
+                    <span className="hidden lg:inline max-w-[140px] truncate">
                       {displayName}
                     </span>
                     <ChevronDown className="size-3.5 text-primary-foreground/70" />
