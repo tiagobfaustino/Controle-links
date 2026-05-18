@@ -22,6 +22,7 @@ type DemandaFormProps = {
     responsavel?: string;
     celularResp?: string;
     tags?: string;
+    observacao?: string;
   };
   mode: "create" | "edit";
 };
@@ -63,6 +64,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
     linkForm: initial.linkForm ?? "",
     prazo: extractDate(initial.prazo),
     horaLimite: initial.horaLimite ?? "18:00",
+    observacao: initial.observacao ?? "",
   });
 
   const [tags, setTags] = useState<string[]>(parseTags(initial.tags));
@@ -139,6 +141,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
       responsavel,
       celularResp,
       tags: serializeTags(tags),
+      observacao: form.observacao.trim(),
     };
 
     try {
@@ -311,6 +314,23 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="observacao">
+                Observação{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  (opcional)
+                </span>
+              </Label>
+              <textarea
+                id="observacao"
+                value={form.observacao}
+                onChange={(e) => set("observacao", e.target.value)}
+                placeholder="Instruções para o cumprimento da demanda"
+                rows={4}
+                className="flex min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none transition-[color,box-shadow] placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50"
+              />
             </div>
 
             <div className="space-y-2">

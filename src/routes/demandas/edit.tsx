@@ -13,6 +13,7 @@ type Demanda = {
   responsavel: string;
   celularResp: string;
   ativa: boolean;
+  observacao?: string;
 };
 
 function normalizeIdentity(value?: string): string {

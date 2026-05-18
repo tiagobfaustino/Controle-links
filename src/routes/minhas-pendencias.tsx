@@ -29,6 +29,7 @@ type Demanda = {
   responsavel: string;
   ativa: boolean;
   tags?: string;
+  observacao?: string;
 };
 
 type Cumprimento = {
@@ -280,6 +281,17 @@ function PendenciaCard({
         <div className="text-xs font-medium text-muted-foreground">
           Prazo: {formatPrazo(d.prazo)} às {d.horaLimite}
         </div>
+
+        {d.observacao?.trim() && (
+          <div className="rounded-md border border-border bg-background px-3 py-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.08em] text-muted-foreground">
+              Observação
+            </p>
+            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              {d.observacao.trim()}
+            </p>
+          </div>
+        )}
 
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-1">
