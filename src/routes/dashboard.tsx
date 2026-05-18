@@ -155,7 +155,10 @@ function normalizeIdentity(value?: unknown): string {
   return toText(value).trim().toUpperCase();
 }
 
-function getResponsavelDisplayName(demanda: Demanda, usuarios: Usuario[]): string {
+function getResponsavelDisplayName(
+  demanda: Demanda,
+  usuarios: Usuario[],
+): string {
   const responsavel = normalizeIdentity(demanda.responsavel);
   if (!responsavel) return "";
 
@@ -379,7 +382,8 @@ export default function DashboardPage() {
       let demandas: Demanda[];
       let cumprimentos: Cumprimento[];
       try {
-        [usuarios, demandas, cumprimentos] = await loadPrivateData(!!turmaFilter);
+        [usuarios, demandas, cumprimentos] =
+          await loadPrivateData(!!turmaFilter);
       } catch (err) {
         if (!turmaFilter || !isTurmaSchemaError(err)) throw err;
         [usuarios, demandas, cumprimentos] = await loadPrivateData(false);
@@ -1023,7 +1027,10 @@ interface CrossTableProps {
   isLoggedIn: boolean;
   isAdmin: boolean;
   isCumprido: (userId: string, demandaId: string) => boolean;
-  getCumprimento: (userId: string, demandaId: string) => Cumprimento | undefined;
+  getCumprimento: (
+    userId: string,
+    demandaId: string,
+  ) => Cumprimento | undefined;
   toggling: string;
   onToggle: (userId: string, demandaId: string) => void;
   onBulkMark: (
@@ -1129,7 +1136,10 @@ function CrossTable({
                 >
                   <div className="flex flex-col items-center gap-1">
                     <span
-                      className="block max-w-[170px] truncate text-sm font-bold leading-tight"
+                      className={cn(
+                        "block max-w-[170px] truncate text-sm font-bold leading-tight",
+                        !d.linkForm && "text-accent",
+                      )}
                       title={d.titulo}
                     >
                       {d.titulo}
@@ -1145,11 +1155,15 @@ function CrossTable({
                             className="inline-flex min-w-0 items-center gap-1 text-accent hover:underline"
                             title={`Enviar WhatsApp para ${getResponsavelDisplayName(d, usuarios)}`}
                           >
-                            <span className="truncate">{getResponsavelDisplayName(d, usuarios)}</span>
+                            <span className="truncate">
+                              {getResponsavelDisplayName(d, usuarios)}
+                            </span>
                             <MessageCircle className="size-3 shrink-0" />
                           </a>
                         ) : (
-                          <span className="truncate">{getResponsavelDisplayName(d, usuarios)}</span>
+                          <span className="truncate">
+                            {getResponsavelDisplayName(d, usuarios)}
+                          </span>
                         )}
                       </span>
                     )}
@@ -1168,7 +1182,7 @@ function CrossTable({
                       </a>
                     ) : (
                       <span className="text-xs font-bold text-primary-foreground/60">
-                        Ciência no app
+                        Tomou ciência?
                       </span>
                     )}
                     {canManageDemanda(d) && (
@@ -1274,9 +1288,14 @@ function CrossTable({
                     const prazoAberto = isPrazoAberto(d);
                     const canInteract =
                       isLoggedIn &&
-                      (isDemandOwner || (isOwnRow && (prazoAberto || cumprido)));
+                      (isDemandOwner ||
+                        (isOwnRow && (prazoAberto || cumprido)));
                     const prazoEncerrado =
-                      isLoggedIn && isOwnRow && !isDemandOwner && !prazoAberto && !cumprido;
+                      isLoggedIn &&
+                      isOwnRow &&
+                      !isDemandOwner &&
+                      !prazoAberto &&
+                      !cumprido;
 
                     return (
                       <td
