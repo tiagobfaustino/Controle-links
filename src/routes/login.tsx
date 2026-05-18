@@ -51,9 +51,9 @@ export default function LoginPage() {
           alt=""
           className="mb-4 size-16 rounded-md border-2 border-primary object-cover shadow-md"
         />
-        <p className="tactical-heading">Controle de Links</p>
+        <p className="tactical-heading">CEFS 2026 - Turma P</p>
         <h1 className="mt-2 text-3xl font-black uppercase tracking-[0.08em] text-foreground">
-          CEFS 2026 - Turma P
+          Controle de Links
         </h1>
         <p className="mt-2 max-w-sm text-sm font-medium text-muted-foreground">
           Gestão operacional de demandas e formulários
