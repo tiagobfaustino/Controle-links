@@ -125,21 +125,21 @@ export function Navbar() {
 
   return (
     <nav className="sticky top-0 z-40 w-full border-b border-primary/70 bg-primary text-primary-foreground shadow-md">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 lg:gap-4">
         <Link
           to="/dashboard"
-          className="mr-2 flex items-center gap-3 font-bold text-primary-foreground"
+          className="mr-2 flex min-w-0 items-center gap-3 font-bold text-primary-foreground"
         >
           <img
             src="/android-chrome-192x192.png"
             alt=""
-            className="size-9 rounded-md border border-accent/70 object-cover shadow-sm"
+            className="size-9 shrink-0 rounded-md border border-accent/70 object-cover shadow-sm"
           />
-          <span className="leading-none">
-            <span className="block text-[11px] font-black uppercase tracking-[0.12em] text-accent">
+          <span className="min-w-0 max-w-[calc(100vw-6.5rem)] leading-none sm:max-w-none">
+            <span className="block truncate whitespace-nowrap text-[11px] font-black uppercase tracking-[0.12em] text-accent">
               Controle de Links
             </span>
-            <span className="block text-sm uppercase tracking-[0.08em]">
+            <span className="block truncate whitespace-nowrap text-sm uppercase tracking-[0.08em]">
               {selectedTurma?.nome ?? "CEFS 2026 - T. P"}
             </span>
           </span>
@@ -151,7 +151,7 @@ export function Navbar() {
               render={
                 <button
                   type="button"
-                  className="hidden items-center gap-1.5 rounded-md border border-primary-foreground/20 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.04em] text-primary-foreground/85 transition-colors hover:bg-primary-foreground/10 md:inline-flex"
+                  className="hidden items-center gap-1.5 rounded-md border border-primary-foreground/20 px-2.5 py-1 text-xs font-bold uppercase tracking-[0.04em] text-primary-foreground/85 transition-colors hover:bg-primary-foreground/10 lg:inline-flex"
                   title="Trocar turma"
                 >
                   {selectedTurma?.sigla ?? "Turma"}
@@ -181,7 +181,7 @@ export function Navbar() {
           </DropdownMenu>
         )}
 
-        <div className="hidden flex-1 items-center gap-1 md:flex">
+        <div className="hidden flex-1 items-center gap-1 lg:flex">
           {navLinks.map((link) => (
             <NavLink
               key={link.href}
@@ -195,7 +195,7 @@ export function Navbar() {
           ))}
         </div>
 
-        <div className="hidden items-center gap-2 md:flex ml-auto">
+        <div className="ml-auto hidden items-center gap-2 lg:flex">
           {user && <NotificationsToggle />}
           <PwaInstall />
           {user ? (
@@ -247,7 +247,7 @@ export function Navbar() {
           )}
         </div>
 
-        <div className="ml-auto flex items-center md:hidden">
+        <div className="ml-auto flex items-center lg:hidden">
           <Button
             variant="ghost"
             size="icon"
@@ -265,7 +265,7 @@ export function Navbar() {
       </div>
 
       {mobileOpen && (
-        <div className="border-t border-primary-foreground/15 bg-primary px-4 pb-4 md:hidden">
+        <div className="border-t border-primary-foreground/15 bg-primary px-4 pb-4 lg:hidden">
           <div className="flex flex-col gap-1 pt-3">
             {navLinks.map((link) => (
               <NavLink
