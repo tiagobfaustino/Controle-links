@@ -27,6 +27,7 @@ type Demanda = {
   celularResp: string;
   ativa: boolean;
   tags?: string;
+  observacao?: string;
 };
 
 type Usuario = {
@@ -482,6 +483,16 @@ function DemandaCard({
               Prazo: {formatDate(d.prazo)} às {d.horaLimite} — Resp.:{" "}
               {getResponsavelDisplayName(d, usuarios)}
             </p>
+            {d.observacao?.trim() && (
+              <div className="mt-2 rounded-md border border-border bg-background px-3 py-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.08em] text-muted-foreground">
+                  Observação
+                </p>
+                <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+                  {d.observacao.trim()}
+                </p>
+              </div>
+            )}
             {parseTags(d.tags).length > 0 && (
               <div className="mt-1 flex flex-wrap gap-1">
                 {parseTags(d.tags).map((t) => (
