@@ -495,11 +495,14 @@ export default function DashboardPage() {
 
     const results = await Promise.allSettled(
       userIds.map((uid) =>
-        pb.collection("cumprimento").create({
-          user: uid,
-          demanda: demandaId,
-          dataRegistro: today,
-        }),
+        pb.collection("cumprimento").create(
+          {
+            user: uid,
+            demanda: demandaId,
+            dataRegistro: today,
+          },
+          { requestKey: null },
+        ),
       ),
     );
 
@@ -526,7 +529,9 @@ export default function DashboardPage() {
       .filter((x): x is string => !!x);
 
     const results = await Promise.allSettled(
-      ids.map((cid) => pb.collection("cumprimento").delete(cid)),
+      ids.map((cid) =>
+        pb.collection("cumprimento").delete(cid, { requestKey: null }),
+      ),
     );
 
     const ok = results.filter((r) => r.status === "fulfilled").length;
