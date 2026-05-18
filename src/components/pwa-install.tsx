@@ -80,7 +80,7 @@ export function PwaInstall() {
         className="border-primary-foreground/25 bg-primary text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
       >
         <Download className="size-4" />
-        Instalar app
+        <span className="hidden lg:inline">Instalar app</span>
       </Button>
     );
   }
