@@ -3,7 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
 import { getPb } from "@/lib/pocketbase";
-import { getDemandaDeadline, isDemandaVencida } from "@/lib/demanda";
+import {
+  formatDemandaDate,
+  getDemandaDeadline,
+  isDemandaVencida,
+} from "@/lib/demanda";
 import { parseTags } from "@/lib/tags";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,9 +56,7 @@ type JsPdfDocument = import("jspdf").jsPDF & {
 };
 
 function formatDate(iso: string) {
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("pt-BR");
+  return formatDemandaDate(iso);
 }
 
 function normalizeIdentity(value?: string): string {

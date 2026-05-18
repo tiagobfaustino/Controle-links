@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
 import { useTurma } from "@/contexts/turma";
 import { getPb } from "@/lib/pocketbase";
+import { getDemandaDatePart } from "@/lib/demanda";
 import { formatPhone } from "@/lib/phone";
 import { parseTags, serializeTags, collectAllTags } from "@/lib/tags";
 import { Button } from "@/components/ui/button";
@@ -62,7 +63,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
 
   function extractDate(prazo?: string): string {
     if (!prazo) return "";
-    return prazo.split(" ")[0] ?? prazo.split("T")[0] ?? "";
+    return getDemandaDatePart(prazo);
   }
 
   function formatInputDate(date: Date): string {

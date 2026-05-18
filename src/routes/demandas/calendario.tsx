@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTurma } from "@/contexts/turma";
 import { getPb } from "@/lib/pocketbase";
-import { isDemandaVencida } from "@/lib/demanda";
+import { getDemandaDatePart, isDemandaVencida } from "@/lib/demanda";
 import { parseTags } from "@/lib/tags";
 import { buildTurmaFilter, isTurmaSchemaError } from "@/lib/turma-filter";
 import { Button } from "@/components/ui/button";
@@ -64,7 +64,7 @@ function parseYM(value: string | null, fallback: { y: number; m: number }) {
 }
 
 function demandaDate(d: Demanda): { y: number; m: number; day: number } | null {
-  const datePart = d.prazo?.split(/[ T]/)[0];
+  const datePart = getDemandaDatePart(d.prazo);
   if (!datePart) return null;
   const [y, m, day] = datePart.split("-").map(Number);
   if (!y || !m || !day) return null;

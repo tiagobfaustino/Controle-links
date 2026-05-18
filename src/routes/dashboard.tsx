@@ -4,7 +4,11 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
 import { useTurma } from "@/contexts/turma";
 import { loadAuthFromCookie } from "@/lib/auth-cookie";
-import { getDemandaDeadline, isDemandaVencida } from "@/lib/demanda";
+import {
+  formatDemandaShortDate,
+  getDemandaDeadline,
+  isDemandaVencida,
+} from "@/lib/demanda";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -108,12 +112,7 @@ function toText(value: unknown): string {
 }
 
 function formatPrazo(prazoStr: string): string {
-  const raw = toText(prazoStr);
-  const d = new Date(raw);
-  if (isNaN(d.getTime())) return raw;
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  return `${day}/${month}`;
+  return formatDemandaShortDate(toText(prazoStr));
 }
 
 function formatWhatsApp(celular: unknown): string {

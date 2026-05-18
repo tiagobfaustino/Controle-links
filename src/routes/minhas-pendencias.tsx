@@ -4,7 +4,11 @@ import { toast } from "sonner";
 import { useAuth } from "@/contexts/auth";
 import { useTurma } from "@/contexts/turma";
 import { getPb } from "@/lib/pocketbase";
-import { getDemandaDeadline, isDemandaVencida } from "@/lib/demanda";
+import {
+  formatDemandaShortDate,
+  getDemandaDeadline,
+  isDemandaVencida,
+} from "@/lib/demanda";
 import { parseTags } from "@/lib/tags";
 import { buildTurmaFilter, isTurmaSchemaError } from "@/lib/turma-filter";
 import { Button } from "@/components/ui/button";
@@ -39,11 +43,7 @@ type Cumprimento = {
 };
 
 function formatPrazo(prazoStr: string): string {
-  const d = new Date(prazoStr);
-  if (isNaN(d.getTime())) return prazoStr;
-  const day = String(d.getUTCDate()).padStart(2, "0");
-  const month = String(d.getUTCMonth() + 1).padStart(2, "0");
-  return `${day}/${month}`;
+  return formatDemandaShortDate(prazoStr);
 }
 
 function hoursUntilDeadline(d: Demanda): number | null {
