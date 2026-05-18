@@ -369,14 +369,14 @@ export default function DemandasPage() {
         <div className="flex gap-2">
           <Button asChild variant="outline">
             <Link to="/demandas/calendario">
-              <CalendarDays className="h-4 w-4 mr-2" />
-              Calendário
+              <CalendarDays className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Calendário</span>
             </Link>
           </Button>
           <Button asChild>
             <Link to="/demandas/nova">
-              <Plus className="h-4 w-4 mr-2" />
-              Nova Demanda
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Nova Demanda</span>
             </Link>
           </Button>
         </div>
