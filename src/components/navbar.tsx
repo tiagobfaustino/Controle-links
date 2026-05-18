@@ -103,7 +103,7 @@ export function Navbar() {
     {
       href: "/usuarios",
       icon: <Users className="size-4" />,
-      label: "Usuários",
+      label: "Alunos",
       show: isAdmin,
     },
     {

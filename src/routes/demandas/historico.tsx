@@ -202,7 +202,7 @@ export default function HistoricoDemandaPage() {
                     Ação
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-black uppercase tracking-[0.06em]">
-                    Usuário marcado
+                    Aluno marcado
                   </th>
                   <th className="px-4 py-2 text-left text-xs font-black uppercase tracking-[0.06em]">
                     Por

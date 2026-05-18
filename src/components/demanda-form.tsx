@@ -360,7 +360,7 @@ export function DemandaForm({ initial = {}, mode }: DemandaFormProps) {
                     Nome
                   </p>
                   <p className="mt-1 min-h-6 text-[15px] font-semibold text-foreground">
-                    {responsavel || "Usuário autenticado"}
+                    {responsavel || "Aluno autenticado"}
                   </p>
                 </div>
                 <div>
